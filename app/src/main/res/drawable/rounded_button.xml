@@ -1,0 +1,21 @@
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+<item>
+    <layer-list>
+        <item><shape >
+            <solid android:color="@color/colorPrimaryDarkShadow" />
+            <corners android:bottomRightRadius="@integer/button"
+                     android:bottomLeftRadius="@integer/button"
+                     android:topRightRadius="@integer/button"
+                     android:topLeftRadius="@integer/button"/>
+        </shape></item>
+        <item android:bottom="3dp"><shape >
+            <solid android:color="@color/colorPrimaryDark" />
+            <corners android:bottomRightRadius="@integer/button"
+                     android:bottomLeftRadius="@integer/button"
+                     android:topRightRadius="@integer/button"
+                     android:topLeftRadius="@integer/button"/>
+        </shape></item>
+
+    </layer-list>
+</item>
+</selector>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:app="http://schemas.android.com/apk/res-auto" android:orientation="horizontal"
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content">
+
+
+    <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" app:srcCompat="@drawable/stub" android:id="@+id/main_page_avatar"
+    />
+    <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingStart="5dp">
+        <TextView
+                android:id="@+id/dialog_title"
+                android:text="Dialog name stub"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAppearance="@style/TextAppearance.AppCompat.Subhead" android:fontFamily="sans-serif-condensed"
+                android:textSize="18sp"/>
+        <TableLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" android:background="@drawable/bottom_line">
+
+            <TableRow android:layout_width="match_parent" android:layout_height="match_parent">
+                <TextView
+                        android:text="message_count_name"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:id="@+id/message_count_name"
+                        android:textAppearance="@style/TextAppearance.AppCompat.Body1"/>
+                <TextView
+                        android:text="mcounter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:id="@+id/mcounter"
+                        android:textAppearance="@style/TextAppearance.AppCompat.Body1"/>
+            </TableRow>
+            <TableRow android:layout_width="match_parent" android:layout_height="match_parent">
+                <TextView
+                        android:text="message_symbols"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:id="@+id/message_symbols"
+                        android:textAppearance="@style/TextAppearance.AppCompat.Body1"/>
+                <TextView
+                        android:text="scounter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:id="@+id/scounter"
+                        android:textAppearance="@style/TextAppearance.AppCompat.Body1"/>
+            </TableRow>
+        </TableLayout>
+    </LinearLayout>
+</LinearLayout>
