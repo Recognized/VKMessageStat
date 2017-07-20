@@ -11,14 +11,14 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:background="?attr/colorPrimary"
-            android:elevation="4dp"
-            android:theme="@style/ThemeOverlay.AppCompat.ActionBar"/>
+            android:elevation="4dp"/>
     <Button
             android:layout_width="match_parent"
             android:layout_height="wrap_content" android:id="@+id/button" android:background="@color/colorAccent"
             android:textSize="14sp" android:textColor="@color/vk_white" android:text="@string/full_stat"/>
     <ListView
+            android:id="@+id/dialogs"
             android:layout_width="match_parent"
-            android:layout_height="match_parent" android:id="@+id/dialogs_list"/>
+            android:layout_height="match_parent" android:clipToPadding="false" android:clipChildren="false"/>
 </LinearLayout>
 

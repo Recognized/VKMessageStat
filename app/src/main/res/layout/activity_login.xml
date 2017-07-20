@@ -7,38 +7,25 @@
               android:paddingLeft="@dimen/activity_horizontal_margin"
               android:paddingRight="@dimen/activity_horizontal_margin"
               android:paddingTop="@dimen/activity_vertical_margin"
-              tools:context="com.vladsaif.vkmessagestat.LoginActivity" android:background="@color/colorPrimary">
-
-    <!-- Login progress -->
-
-    <ScrollView
-            android:id="@+id/login_form"
+              tools:context="com.vladsaif.vkmessagestat.LoginActivity"
+              android:background="@color/colorPrimary"
+              android:layout_gravity="center_horizontal"
+            android:gravity="center_vertical">
+    <Button
+            android:id="@+id/sign_in_button"
+            style="?android:textAppearanceSmall"
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:text="@string/action_sign_in"
+            android:textStyle="bold" android:background="@drawable/rounded_button" android:textColor="#FFFFFF"
+            android:layout_height="56sp"
+            android:textSize="18sp" android:layout_gravity="center_vertical"/>
+    <TextView
+            android:text="@string/error_auth"
+            android:layout_width="match_parent"
+            android:id="@+id/auth_error"
+            android:textColor="@android:color/holo_red_light"
+            android:textStyle="normal|bold" android:textAlignment="gravity" android:gravity="center_vertical|center_horizontal"
+            android:visibility="gone" android:layout_gravity="center_vertical" android:layout_height="36sp"
+            />
 
-        <LinearLayout
-                android:id="@+id/email_login_form"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical" android:layout_gravity="center_vertical" android:weightSum="1">
-<Button
-        android:id="@+id/sign_in_button"
-        style="?android:textAppearanceSmall"
-        android:layout_width="match_parent"
-        android:layout_marginTop="16dp"
-        android:text="@string/action_sign_in"
-        android:textStyle="bold" android:background="@drawable/rounded_button" android:textColor="#FFFFFF"
-        android:shadowDy="50" android:singleLine="true"
-        android:shadowColor="@color/colorPrimaryDarkShadow" android:shadowRadius="10" android:layout_height="56sp"
-        android:textSize="18sp"/>
-            <CheckedTextView
-                    android:text="@string/error_auth"
-                    android:layout_width="match_parent"
-                    android:id="@+id/auth_error"
-                    android:layout_weight="0.75" android:layout_height="36sp" android:textColor="@android:color/holo_red_light"
-                    android:textStyle="normal|bold" android:textAlignment="gravity" android:gravity="center_vertical"
-                    android:visibility="gone"/>
-
-        </LinearLayout>
-    </ScrollView>
 </LinearLayout>
