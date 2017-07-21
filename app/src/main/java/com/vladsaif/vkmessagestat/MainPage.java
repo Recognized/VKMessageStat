@@ -1,15 +1,19 @@
 package com.vladsaif.vkmessagestat;
 
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.net.LinkAddress;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -25,18 +29,57 @@ import java.util.Map;
 public class MainPage extends AppCompatActivity {
 
     private VKAccessToken token;
+    private boolean loading = true;
+    int pastVisiblesItems, visibleItemCount, totalItemCount;
+    private RecyclerView mRecyclerView;
+    private LinearLayoutManager mLayoutManager;
+    private RecyclerView.Adapter mAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_page);
         Toolbar toolbar = (Toolbar) findViewById(R.id.my_toolbar);
+        mRecyclerView = (RecyclerView) findViewById(R.id.dialogs);
         // TODO dont't forget to change title
         // TODO correct settings
+        // setting common things
+        SharedPreferences sPref = getSharedPreferences("settings", MODE_PRIVATE);
+        STAT_MODE stat_mode = STAT_MODE.values()[(sPref.getInt("stat_mode", 0))];
+        switch (stat_mode) {
+            case SIMPLE:
+                toolbar.setTitle(R.string.simple_stat);
+                break;
+            case ADVANCED:
+                toolbar.setTitle(R.string.advanced_stat);
+        }
         setSupportActionBar(toolbar);
+
         token = VKAccessToken.tokenFromSharedPreferences(getApplication(), "access_token");
+
+        //do stuff with RecyclerView
+        mLayoutManager = new LinearLayoutManager(this);
+        mRecyclerView.setLayoutManager(mLayoutManager);
+        mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                if (dy > 0) //check for scroll down
+                {
+                    visibleItemCount = mLayoutManager.getChildCount();
+                    totalItemCount = mLayoutManager.getItemCount();
+                    pastVisiblesItems = mLayoutManager.findFirstVisibleItemPosition();
+
+                    if (loading) {
+                        if ((visibleItemCount + pastVisiblesItems) >= totalItemCount) {
+                            loading = false;
+                            Log.v("...", "Last Item Wow !");
+                            //Do pagination.. i.e. fetch new data
+                        }
+                    }
+                }
+            }
+        });
         LayoutInflater inflater = getLayoutInflater();
-        ListView dialogs = (ListView) findViewById(R.id.dialogs);
         LinearLayout dialog = (LinearLayout) inflater.inflate(R.layout.dialog, dialogs, false);
         fillDialogView(dialog, null, "Name", 1, 1);
         dialogs.addView(dialog);
@@ -44,22 +87,8 @@ public class MainPage extends AppCompatActivity {
 
     }
 
-    private void fillDialogView(LinearLayout dialog, Bitmap avatar, String name, Integer mcounter, Integer scounter) {
-        ImageView image = dialog.findViewById(R.id.main_page_avatar);
-        image.setImageBitmap(Utils.getCircleBitmap(avatar));
-        TextView txt = dialog.findViewById(R.id.dialog_title);
-        txt.setText(name);
+    enum STAT_MODE {
+        SIMPLE, ADVANCED
     }
-
-// TODO do smth here
-//    class DialogInfo {
-//        private View view;
-//
-//        public View getView() {
-//            return view;
-//        }
-//
-//        public DialogInfo(dialog_id,)
-//
-//    }
 }
+

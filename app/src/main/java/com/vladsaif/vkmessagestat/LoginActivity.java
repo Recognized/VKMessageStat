@@ -12,6 +12,7 @@ import android.support.v7.widget.ButtonBarLayout;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckedTextView;
+import android.widget.TextView;
 import com.vk.sdk.VKAccessToken;
 import com.vk.sdk.VKCallback;
 import com.vk.sdk.VKSdk;
@@ -20,7 +21,7 @@ import com.vk.sdk.api.VKError;
 public class LoginActivity extends AppCompatActivity {
 
     private Button login;
-    private CheckedTextView error;
+    private TextView error;
 
     @Override
     protected void onStart() {
@@ -47,7 +48,7 @@ public class LoginActivity extends AppCompatActivity {
             }
         });
 
-        error = (CheckedTextView) findViewById(R.id.auth_error);
+        error = (TextView) findViewById(R.id.auth_error);
         error.setVisibility(View.GONE);
     }
 
