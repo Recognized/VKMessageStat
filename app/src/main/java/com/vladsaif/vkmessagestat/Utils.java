@@ -6,7 +6,8 @@ import android.graphics.*;
  * Created by vlad9 on 20.07.2017.
  */
 public class Utils {
-
+    public static final String settings = "settings";
+    public static final String external_storage = "external_storage";
     // Use only for avatar's of users
     public static Bitmap getCircleBitmap(Bitmap source)
     {

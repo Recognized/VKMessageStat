@@ -1,5 +1,6 @@
 package com.vladsaif.vkmessagestat;
 
+import com.vladsaif.vkmessagestat.Utils;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.net.LinkAddress;
@@ -24,6 +25,7 @@ import com.vk.sdk.api.VKApi;
 import com.vk.sdk.api.VKParameters;
 import com.vk.sdk.api.methods.VKApiUsers;
 
+import java.io.*;
 import java.util.Map;
 
 public class MainPage extends AppCompatActivity {
@@ -35,6 +37,27 @@ public class MainPage extends AppCompatActivity {
     private LinearLayoutManager mLayoutManager;
     private RecyclerView.Adapter mAdapter;
 
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        // Check if app can write database to sdcard or something
+        // I don't really know how to check how much memory is available
+        // so there is no other way for me except forgetting about this problem
+        SharedPreferences sPref = getSharedPreferences(Utils.settings, MODE_PRIVATE);
+        if (!sPref.contains(Utils.external_storage)) {
+            SharedPreferences.Editor edit = sPref.edit();
+            try {
+                File test = new File(getExternalFilesDir(null), "test");
+                OutputStream os = new FileOutputStream(test);
+                edit.putBoolean(Utils.external_storage, true);
+            } catch (IOException ex) {
+                edit.putBoolean(Utils.external_storage, false);
+            }
+            edit.apply();
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -44,7 +67,7 @@ public class MainPage extends AppCompatActivity {
         // TODO dont't forget to change title
         // TODO correct settings
         // setting common things
-        SharedPreferences sPref = getSharedPreferences("settings", MODE_PRIVATE);
+        SharedPreferences sPref = getSharedPreferences(Utils.settings, MODE_PRIVATE);
         STAT_MODE stat_mode = STAT_MODE.values()[(sPref.getInt("stat_mode", 0))];
         switch (stat_mode) {
             case SIMPLE:
@@ -57,13 +80,13 @@ public class MainPage extends AppCompatActivity {
 
         token = VKAccessToken.tokenFromSharedPreferences(getApplication(), "access_token");
 
-        //do stuff with RecyclerView
+        // do stuff with RecyclerView
         mLayoutManager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(mLayoutManager);
         mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-                if (dy > 0) //check for scroll down
+                if (dy > 0) // check for scroll down
                 {
                     visibleItemCount = mLayoutManager.getChildCount();
                     totalItemCount = mLayoutManager.getItemCount();
@@ -73,7 +96,7 @@ public class MainPage extends AppCompatActivity {
                         if ((visibleItemCount + pastVisiblesItems) >= totalItemCount) {
                             loading = false;
                             Log.v("...", "Last Item Wow !");
-                            //Do pagination.. i.e. fetch new data
+                            // Do pagination.. i.e. fetch new data
                         }
                     }
                 }
