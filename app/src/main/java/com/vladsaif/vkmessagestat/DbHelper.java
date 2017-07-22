@@ -1,13 +1,19 @@
 package com.vladsaif.vkmessagestat;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.graphics.Bitmap;
+import com.vk.sdk.api.VKApiConst;
 import com.vk.sdk.api.VKParameters;
 import com.vk.sdk.api.VKRequest;
 import com.vk.sdk.api.VKResponse;
+import com.vk.sdk.api.methods.VKApiGroups;
+import com.vk.sdk.api.model.VKApiUser;
+import com.vk.sdk.api.model.VKList;
+import com.vk.sdk.api.model.VKUsersArray;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -15,6 +21,7 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 
 
 public class DbHelper extends SQLiteOpenHelper {
@@ -28,9 +35,9 @@ public class DbHelper extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase data) {
-        data.execSQL("CREATE TABLE IF NOT EXISTS dialogs (dialog_id INTEGER PRIMARY KEY, name TEXT, " +
-                "mcounter INT, scounter INT)");
+        data.execSQL("CREATE TABLE IF NOT EXISTS dialogs (dialog_id INTEGER PRIMARY KEY, type TEXT)");
         data.execSQL("CREATE TABLE IF NOT EXISTS last_message_id (dialog_id INTEGER PRIMARY KEY, message_id INT)");
+        data.execSQL("CREATE TABLE IF NOT EXISTS names (dialog_id INTEGER PRIMARY KEY, name INT)");
     }
 
     @Override
@@ -38,16 +45,17 @@ public class DbHelper extends SQLiteOpenHelper {
         //pass TODO maybe, or don't give a fuck about this
     }
 
-    public static void downloadMessages(SQLiteDatabase db, Context context) {
+    public static void getDialogs(final SQLiteDatabase db, Context context) {
         db.beginTransaction();
         // TODO maybe I need fix locale somehow
-        // TODO this is just a stub for a real shit
         VKRequest req = new VKRequest("messages.getDialogs", VKParameters.from("count", "20"));
         req.executeWithListener(new VKRequest.VKRequestListener() {
             @Override
             public void onComplete(VKResponse response) {
                 super.onComplete(response);
                 try {
+                    ArrayList<Integer> user_ids = new ArrayList<>(), group_ids = new ArrayList<>();
+                    db.beginTransaction();
                     JSONArray items = response.json.getJSONArray("items");
                     for (int i = 0; i < items.length(); ++i) {
                         JSONObject message = items.getJSONObject(i);
@@ -55,11 +63,61 @@ public class DbHelper extends SQLiteOpenHelper {
                         int user_id = message.getInt("user_id");
                         Utils.DIALOG_TYPE type = Utils.resolveTypeBySomeShitThankYouVK(user_id, chat_id);
                         int dialog_id = Utils.getDialogID(type, user_id, chat_id);
-                        String name = message.has("title") ? message.getString("title") : Utils.getName(user_id);
-
-
-
+                        switch (type) {
+                            case CHAT:
+                                ContentValues val = new ContentValues();
+                                val.put("dialog_id", dialog_id);
+                                val.put("type", "chat");
+                                db.insertWithOnConflict("dialogs", null, val, SQLiteDatabase.CONFLICT_REPLACE);
+                                db.execSQL("INSERT OR REPLACE INTO names VALUES (" + Integer.toString(dialog_id) + ", " +
+                                        "'" + message.getString("title") +  "')");
+                                break;
+                            case USER:
+                                user_ids.add(dialog_id);
+                                break;
+                            case COMMUNITY:
+                                group_ids.add(user_id);
+                        }
                     }
+                    db.endTransaction();
+                    VKRequest users = new VKRequest("users.get", VKParameters.from("user_ids", Utils.join(user_ids),
+                                                                                            "fields", "has_photo,photo_200"));
+                    users.executeWithListener(new VKRequest.VKRequestListener() {
+                        @Override
+                        public void onComplete(VKResponse response) {
+                            super.onComplete(response);
+                            VKList<VKApiUser> users = (VKList<VKApiUser>) response.parsedModel;
+                            db.beginTransaction();
+                            for(VKApiUser user : users) {
+                                ContentValues val = new ContentValues();
+                                val.put("dialog_id", user.id);
+                                val.put("type", "user");
+                                db.insertWithOnConflict("dialogs", null, val, SQLiteDatabase.CONFLICT_REPLACE);
+                                db.execSQL("INSERT OR REPLACE INTO names VALUES (" + Integer.toString(user.id) + ", " +
+                                        "'" + user.first_name + " " + user.last_name +  "')");
+                            }
+                        }
+                    });
+
+                    VKRequest groups = new VKRequest("groups.getById", VKParameters.from("group_ids", Utils.join(group_ids)));
+                    groups.executeWithListener(new VKRequest.VKRequestListener() {
+                        @Override
+                        public void onComplete(VKResponse response) {
+                            super.onComplete(response);
+                            // todo I just have copied this
+                            VKApiGroups users = (VKList<VKApiUser>) response.parsedModel;
+                            db.beginTransaction();
+                            for(VKApiUser user : users) {
+                                ContentValues val = new ContentValues();
+                                val.put("dialog_id", user.id);
+                                val.put("type", "user");
+                                db.insertWithOnConflict("dialogs", null, val, SQLiteDatabase.CONFLICT_REPLACE);
+                                db.execSQL("INSERT OR REPLACE INTO names VALUES (" + Integer.toString(user.id) + ", " +
+                                        "'" + user.first_name + " " + user.last_name +  "')");
+                            }
+                        }
+                    });
+
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }

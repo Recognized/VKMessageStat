@@ -6,6 +6,7 @@ import com.vk.sdk.api.VKParameters;
 import com.vk.sdk.api.VKRequest;
 import com.vk.sdk.api.VKResponse;
 
+import java.util.ArrayList;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
@@ -61,17 +62,15 @@ public class Utils {
         }
     }
 
-    public static String getName(int user_id) {
-        if (user_id > 0) {
-            VKRequest req = new VKRequest("user.get", VKParameters.from("user_id", Integer.toString(user_id)));
-            req.executeWithListener(new VKRequest.VKRequestListener() {
-                @Override
-                public void onComplete(VKResponse response) {
-                    super.onComplete(response);
-                    // fuck this architecture i just want to return my response
-                }
-            });
-            Future<>
+    public static String join(ArrayList<Integer> ids) {
+        StringBuilder temp = new StringBuilder();
+        for(int i = 0; i < ids.size()-1; ++i) {
+            temp.append(ids.get(i));
+            temp.append(',');
         }
+        temp.append(ids.get(ids.size()-1));
+        return temp.toString();
     }
+
+
 }

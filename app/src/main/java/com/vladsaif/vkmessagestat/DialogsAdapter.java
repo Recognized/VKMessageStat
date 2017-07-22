@@ -21,6 +21,7 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
     private static BitmapFactory.Options options = new BitmapFactory.Options();
 
     public DialogsAdapter(SQLiteDatabase db) {
+        
         Cursor dialogs = db.rawQuery("SELECT * FROM dialogs", new String[]{});
         options.inPreferredConfig = Bitmap.Config.ARGB_8888;
         if (dialogs.getCount() > 0) {
