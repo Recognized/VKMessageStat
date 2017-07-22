@@ -1,5 +1,9 @@
 package com.vladsaif.vkmessagestat;
 
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -8,14 +12,29 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import java.io.File;
 import java.util.ArrayList;
 
 public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHolder> {
 
     private ArrayList<DialogData> data;
+    private static BitmapFactory.Options options = new BitmapFactory.Options();
 
-    public DialogsAdapter() {
-        // TODO fetch data from database
+    public DialogsAdapter(SQLiteDatabase db) {
+        Cursor dialogs = db.rawQuery("SELECT * FROM dialogs", new String[]{});
+        options.inPreferredConfig = Bitmap.Config.ARGB_8888;
+        if (dialogs.getCount() > 0) {
+            dialogs.moveToFirst();
+            do {
+                String avatar = dialogs.getString(dialogs.getColumnIndex("avatar_path"));
+                data.add(new DialogData(dialogs.getInt(dialogs.getColumnIndex("dialog_id")),
+                                            dialogs.getString(dialogs.getColumnIndex("name")),
+                                            BitmapFactory.decodeFile(avatar, options),
+                                            dialogs.getInt(dialogs.getColumnIndex("mcounter")),
+                                            dialogs.getInt(dialogs.getColumnIndex("scounter"))));
+            } while (dialogs.moveToNext());
+        }
+        dialogs.close();
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {

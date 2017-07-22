@@ -8,8 +8,15 @@ public class DialogData {
     private String name;
     private Integer messages;
     private Integer symbols;
+    private Integer dialog_id;
 
-    public DialogData
+    public DialogData(Integer dialog_id, String name, Bitmap avatar, Integer mcounter, Integer scounter) {
+        this.dialog_id = dialog_id;
+        this.name = name;
+        this.avatar = avatar;
+        this.messages = mcounter;
+        this.symbols = scounter;
+    }
 
     public Integer getSymbols() {
         return symbols;
@@ -25,5 +32,9 @@ public class DialogData {
 
     public Bitmap getAvatar() {
         return avatar;
+    }
+
+    public Integer getDialog_id() {
+        return dialog_id;
     }
 }
