@@ -1,6 +1,8 @@
 package com.vladsaif.vkmessagestat;
 
+import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.Resources;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteAbortException;
 import android.database.sqlite.SQLiteDatabase;
@@ -9,6 +11,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.annotation.AnyRes;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -22,6 +25,7 @@ import com.vk.sdk.VKAccessToken;
 import java.io.*;
 import java.net.URL;
 import java.net.URLDecoder;
+import java.util.ResourceBundle;
 import java.util.concurrent.TimeUnit;
 
 public class MainPage extends AppCompatActivity {
@@ -56,22 +60,23 @@ public class MainPage extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_page);
         Toolbar toolbar = (Toolbar) findViewById(R.id.my_toolbar);
+        Log.d("tag", "first call Db");
         dbHelper = new DbHelper(getApplicationContext(), "dialogs.db");
         mRecyclerView = (RecyclerView) findViewById(R.id.dialogs);
-        //DbHelper.getDialogs(dbHelper.db, getApplicationContext());
+        DbHelper.getDialogs(dbHelper.db, getApplicationContext());
+        try {
+            Thread.sleep(10000);
+        } catch (InterruptedException ex) {
+            Log.d("waiting", "interrupted");
+        }
         Log.d("databasepath", getDatabasePath("dialogs.db").getAbsolutePath());
-        Cursor dialogs = dbHelper.db.rawQuery("SELECT dialog_id, type FROM dialogs", new String[]{});
+        Cursor dialogs = dbHelper.db.rawQuery("SELECT dialog_id, type FROM dialogs;", new String[]{});
         if (dialogs.moveToFirst()) {
             do {
                 Log.d("help", Integer.toString(dialogs.getInt(dialogs.getColumnIndex("dialog_id"))));
             } while (dialogs.moveToNext());
         }
         dialogs.close();
-        try {
-            Thread.sleep(10000);
-        } catch (InterruptedException ex) {
-            Log.d("waiting", "interrupted");
-        }
         mLayoutManager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(mLayoutManager);
         mRecyclerView.setAdapter(new DialogsAdapter(dbHelper, getApplicationContext(), new SetImage()));
@@ -94,10 +99,10 @@ public class MainPage extends AppCompatActivity {
         Log.d("after", "toolbar");
     }
 
-    class SetImage extends AsyncTask<Object, Void, Pair<Bitmap, ImageView>> {
+    static class SetImage extends AsyncTask<AsyncParam, Void, Pair<Bitmap, ImageView> > {
         @Override
-        protected Pair<Bitmap, ImageView> doInBackground(Object... objects) {
-            String link = (String) objects[0];
+        protected Pair<Bitmap, ImageView> doInBackground(AsyncParam[] params) {
+            String link = params[0].str;
             Bitmap bitmap = null;
             if (!link.equals("no_photo")) {
                 try {
@@ -107,11 +112,11 @@ public class MainPage extends AppCompatActivity {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                Utils.savePic(bitmap, Utils.transformLink(link), getApplicationContext());
+                Utils.savePic(bitmap, Utils.transformLink(link), params[0].context.getApplicationContext() );
             } else {
-                bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.stub);
+                bitmap = BitmapFactory.decodeResource(params[0].context.getResources(), R.drawable.stub);
             }
-            return new Pair<>(bitmap, (ImageView) objects[1]);
+            return new Pair<>(bitmap, params[0].imageView);
         }
         protected void onProgressUpdate(Void... params) {
         }
@@ -123,6 +128,17 @@ public class MainPage extends AppCompatActivity {
 
     enum STAT_MODE {
         SIMPLE, ADVANCED
+    }
+}
+
+class AsyncParam {
+    public String str;
+    public ImageView imageView;
+    public Context context;
+    public AsyncParam(String str, ImageView imageView, Context context) {
+        this.str = str;
+        this.imageView = imageView;
+        this.context = context;
     }
 }
 

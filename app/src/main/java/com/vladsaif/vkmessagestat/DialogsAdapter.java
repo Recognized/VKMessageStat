@@ -44,7 +44,7 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
         db = helper.getWritableDatabase();
         // Copy-paste because I can't have functional interface
         Log.d("db", db.getPath());
-        Cursor dialogs = db.rawQuery("SELECT dialog_id, type FROM dialogs", new String[]{});
+        Cursor dialogs = db.rawQuery("SELECT dialog_id, type FROM dialogs;", new String[]{});
         Log.d(here, "count " + Integer.toString(dialogs.getCount()));
         if (dialogs.getCount() > 0) {
             dialogs.moveToFirst();
@@ -57,17 +57,18 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
         }
         dialogs.close();
 
-        Cursor names = db.rawQuery("SELECT dialog_id, name FROM names", new String[]{});
+        Cursor names = db.rawQuery("SELECT dialog_id,name FROM names;", new String[]{});
         if (names.getCount() > 0) {
             names.moveToFirst();
             do {
                 Integer id = names.getInt(names.getColumnIndex("dialog_id"));
                 data.get(id).name = names.getString(names.getColumnIndex("name"));
+                Log.d("names", data.get(id).name);
             } while (names.moveToNext());
         }
         names.close();
 
-        Cursor pictures = db.rawQuery("SELECT dialog_id, link FROM pictures", new String[]{});
+        Cursor pictures = db.rawQuery("SELECT dialog_id, link FROM pictures;", new String[]{});
         if (pictures.getCount() > 0) {
             pictures.moveToFirst();
             do {
@@ -109,11 +110,11 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
         Integer dialog_id = positionToId.get(position);
         Bitmap image = Utils.loadPic(data.get(dialog_id).link, options, context);
         if (image == null) {
-            imageSetter.execute(data.get(dialog_id).link, holder.avatar);
+            (new MainPage.SetImage()).execute(new AsyncParam(data.get(dialog_id).link, holder.avatar, context));
         } else {
             holder.avatar.setImageBitmap(image);
         }
-        holder.title.setText(data.get(position).name);
+        holder.title.setText(data.get(dialog_id).name);
         holder.mcounter.setText("0");
         holder.scounter.setText("0");
     }

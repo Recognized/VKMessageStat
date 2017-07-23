@@ -40,12 +40,10 @@ public class DbHelper extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase data) {
         Log.d("db", "oncreate");
-        data.beginTransaction();
-        data.execSQL("CREATE TABLE IF NOT EXISTS dialogs (dialog_id INTEGER PRIMARY KEY, type TEXT)");
-        data.execSQL("CREATE TABLE IF NOT EXISTS last_message_id (dialog_id INTEGER PRIMARY KEY, message_id INT)");
-        data.execSQL("CREATE TABLE IF NOT EXISTS names (dialog_id INTEGER PRIMARY KEY, name TEXT)");
-        data.execSQL("CREATE TABLE IF NOT EXISTS pictures (dialog_id INTEGER PRIMARY KEY, link TEXT)");
-        data.endTransaction();
+        data.execSQL("CREATE TABLE IF NOT EXISTS dialogs (dialog_id INTEGER PRIMARY KEY, type TEXT);");
+        data.execSQL("CREATE TABLE IF NOT EXISTS last_message_id (dialog_id INTEGER PRIMARY KEY, message_id INT);");
+        data.execSQL("CREATE TABLE IF NOT EXISTS names (dialog_id INTEGER PRIMARY KEY, name TEXT);");
+        data.execSQL("CREATE TABLE IF NOT EXISTS pictures (dialog_id INTEGER PRIMARY KEY, link TEXT);");
     }
 
     @Override
@@ -54,7 +52,6 @@ public class DbHelper extends SQLiteOpenHelper {
     }
 
     public static void getDialogs(final SQLiteDatabase db, Context context) {
-        db.beginTransaction();
         // TODO maybe I need fix locale somehow
         VKRequest req = new VKRequest("messages.getDialogs", VKParameters.from("count", "20"));
         req.executeWithListener(new VKRequest.VKRequestListener() {
@@ -64,7 +61,6 @@ public class DbHelper extends SQLiteOpenHelper {
                 VKRequest users, groups;
                 final ArrayList<Integer> user_ids = new ArrayList<>(), group_ids = new ArrayList<>();
                 try {
-                    db.beginTransaction();
                     Log.d("db", db.getPath());
                     Log.d("json", response.responseString);
                     JSONArray items = response.json.getJSONObject("response").getJSONArray("items");
@@ -82,9 +78,9 @@ public class DbHelper extends SQLiteOpenHelper {
                                 val.put("type", "chat");
                                 db.insertWithOnConflict("dialogs", null, val, SQLiteDatabase.CONFLICT_REPLACE);
                                 db.execSQL("INSERT OR REPLACE INTO names VALUES (" + Integer.toString(dialog_id) + ", " +
-                                        "'" + message.getString("title") + "')");
+                                        "'" + message.getString("title") + "');");
                                 db.execSQL("INSERT OR REPLACE INTO pictures VALUES (" + Integer.toString(dialog_id) + ", " +
-                                        "'" + (message.has("photo_200") ? message.getString("photo_200") : "no_photo") + "')");
+                                        "'" + (message.has("photo_200") ? message.getString("photo_200") : "no_photo") + "');");
                                 break;
                             case USER:
                                 user_ids.add(dialog_id);
@@ -93,7 +89,6 @@ public class DbHelper extends SQLiteOpenHelper {
                                 group_ids.add(-dialog_id);
                         }
                     }
-                    db.endTransaction();
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -104,7 +99,6 @@ public class DbHelper extends SQLiteOpenHelper {
                         @Override
                         public void onComplete(VKResponse response) {
                             super.onComplete(response);
-                            db.beginTransaction();
                             Log.d("db", db.getPath());
                             try {
                                 JSONArray users = response.json.getJSONArray("response");
@@ -115,14 +109,13 @@ public class DbHelper extends SQLiteOpenHelper {
                                     val.put("type", "user");
                                     db.insertWithOnConflict("dialogs", null, val, SQLiteDatabase.CONFLICT_REPLACE);
                                     db.execSQL("INSERT OR REPLACE INTO names VALUES (" + Integer.toString(user.getInt("id")) + ", " +
-                                            "'" + user.getString("first_name") + " " + user.getString("last_name") + "')");
+                                            "'" + user.getString("first_name") + " " + user.getString("last_name") + "');");
                                     db.execSQL("INSERT OR REPLACE INTO pictures VALUES (" + Integer.toString(user.getInt("id")) + ", " +
-                                                "'" + (user.has("photo_200") ? user.getString("photo_200") : "no_photo") + "')");
+                                                "'" + (user.has("photo_200") ? user.getString("photo_200") : "no_photo") + "');");
                                 }
                             } catch (JSONException ex) {
                                 ex.printStackTrace();
                             }
-                            db.endTransaction();
                         }
                     });
                 }
@@ -135,7 +128,6 @@ public class DbHelper extends SQLiteOpenHelper {
                             super.onComplete(response);
                             // todo I just have copied this
                             // I don't really know what vk.com is doing with array response
-                            db.beginTransaction();
                             try {
                                 JSONArray array = response.json.getJSONObject("response").getJSONArray("items");
                                 for (int i = 0; i < array.length(); ++i) {
@@ -146,14 +138,13 @@ public class DbHelper extends SQLiteOpenHelper {
                                     val.put("type", "community");
                                     db.insertWithOnConflict("dialogs", null, val, SQLiteDatabase.CONFLICT_REPLACE);
                                     db.execSQL("INSERT OR REPLACE INTO names VALUES (" + Integer.toString(id) + ", " +
-                                            "'" + array.getJSONObject(i).getString("name") + "')");
+                                            "'" + array.getJSONObject(i).getString("name") + "');");
                                     db.execSQL("INSERT OR REPLACE INTO pictures VALUES (" + Integer.toString(id) + ", " +
-                                            "'" + (jj.has("photo_200") ? jj.getString("photo_200") : "no_photo") + "')");
+                                            "'" + (jj.has("photo_200") ? jj.getString("photo_200") : "no_photo") + "');");
                                 }
                             } catch (JSONException ex) {
                                 ex.printStackTrace();
                             }
-                            db.endTransaction();
                         }
                     });
                 }
