@@ -1,42 +1,30 @@
 package com.vladsaif.vkmessagestat;
 
-import com.vladsaif.vkmessagestat.Utils;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
-import android.net.LinkAddress;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.os.AsyncTask;
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
-import android.view.LayoutInflater;
+import android.util.Pair;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.ListView;
-import android.widget.TextView;
 import com.vk.sdk.VKAccessToken;
-import com.vk.sdk.VKSdk;
-import com.vk.sdk.api.VKApi;
-import com.vk.sdk.api.VKParameters;
-import com.vk.sdk.api.methods.VKApiUsers;
 
 import java.io.*;
-import java.util.Map;
+import java.net.URL;
+import java.net.URLDecoder;
 
 public class MainPage extends AppCompatActivity {
 
     private VKAccessToken token;
-    private boolean loading = true;
-    int pastVisiblesItems, visibleItemCount, totalItemCount;
     private RecyclerView mRecyclerView;
     private LinearLayoutManager mLayoutManager;
-    private RecyclerView.Adapter mAdapter;
-
+    private DbHelper dbHelper;
 
     @Override
     protected void onStart() {
@@ -63,7 +51,9 @@ public class MainPage extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_page);
         Toolbar toolbar = (Toolbar) findViewById(R.id.my_toolbar);
+        dbHelper = new DbHelper(getApplicationContext(), "dialogs");
         mRecyclerView = (RecyclerView) findViewById(R.id.dialogs);
+        mRecyclerView.setAdapter(new DialogsAdapter(dbHelper.db, getApplicationContext(), new SetImage()));
         // TODO dont't forget to change title
         // TODO correct settings
         // setting common things
@@ -83,26 +73,35 @@ public class MainPage extends AppCompatActivity {
         // do stuff with RecyclerView
         mLayoutManager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(mLayoutManager);
-//        mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-//            @Override
-//            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-//                if (dy > 0) // check for scroll down
-//                {
-//                    visibleItemCount = mLayoutManager.getChildCount();
-//                    totalItemCount = mLayoutManager.getItemCount();
-//                    pastVisiblesItems = mLayoutManager.findFirstVisibleItemPosition();
-//
-//                    if (loading) {
-//                        if ((visibleItemCount + pastVisiblesItems) >= totalItemCount) {
-//                            loading = false;
-//                            Log.v("...", "Last Item Wow !");
-//                            // Do pagination.. i.e. fetch new data
-//                        }
-//                    }
-//                }
-//            }
-//        });
 
+    }
+
+    class SetImage extends AsyncTask<Object, Void, Pair<Bitmap, ImageView>> {
+        @Override
+        protected Pair<Bitmap, ImageView> doInBackground(Object... objects) {
+            String link = (String) objects[0];
+            Bitmap bitmap = null;
+            if (!link.equals("no_photo")) {
+                try {
+                    InputStream inputStream = new URL(link).openStream();   // Download Image from URL
+                    bitmap = Utils.getCircleBitmap(BitmapFactory.decodeStream(inputStream));       // Decode Bitmap
+                    inputStream.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                Utils.savePic(bitmap, Utils.transformLink(link), getApplicationContext());
+            } else {
+                bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.stub);
+            }
+            return new Pair<>(bitmap, (ImageView) objects[1]);
+        }
+
+        protected void onProgressUpdate(Void... params) {
+        }
+
+        protected void onPostExecute(Pair<Bitmap, ImageView> result) {
+            result.second.setImageBitmap(result.first);
+        }
     }
 
     enum STAT_MODE {

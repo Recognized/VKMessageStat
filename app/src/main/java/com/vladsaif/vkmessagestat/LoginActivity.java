@@ -26,11 +26,10 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        VKSdk.initialize(this);
         VKAccessToken token = VKAccessToken.tokenFromSharedPreferences(getApplication(), "access_token");
         if (token != null) {
             // TODO dunno whether it's good to start new activity here and will this activity be created or not
-            startActivity(new Intent(getApplicationContext(), MainPage.class));
+            startActivity(new Intent(this, MainPage.class));
         }
     }
 
