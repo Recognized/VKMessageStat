@@ -1,11 +1,13 @@
 package com.vladsaif.vkmessagestat;
 
+import android.app.DownloadManager;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.graphics.Bitmap;
+import android.util.Log;
 import com.vk.sdk.api.VKApiConst;
 import com.vk.sdk.api.VKParameters;
 import com.vk.sdk.api.VKRequest;
@@ -26,7 +28,7 @@ import java.util.ArrayList;
 
 public class DbHelper extends SQLiteOpenHelper {
     private static final int DATABASE_VERSION = 1;
-    public SQLiteDatabase db;
+    public final SQLiteDatabase db;
 
     public DbHelper(final Context context, String databaseName) {
         super(new DatabaseContext(context), databaseName, null, DATABASE_VERSION);
@@ -37,7 +39,8 @@ public class DbHelper extends SQLiteOpenHelper {
     public void onCreate(SQLiteDatabase data) {
         data.execSQL("CREATE TABLE IF NOT EXISTS dialogs (dialog_id INTEGER PRIMARY KEY, type TEXT)");
         data.execSQL("CREATE TABLE IF NOT EXISTS last_message_id (dialog_id INTEGER PRIMARY KEY, message_id INT)");
-        data.execSQL("CREATE TABLE IF NOT EXISTS names (dialog_id INTEGER PRIMARY KEY, name INT)");
+        data.execSQL("CREATE TABLE IF NOT EXISTS names (dialog_id INTEGER PRIMARY KEY, name TEXT)");
+        data.execSQL("CREATE TABLE IF NOT EXISTS pictures (dialog_id INTEGER PRIMARY KEY, link TEXT)");
     }
 
     @Override
@@ -53,14 +56,16 @@ public class DbHelper extends SQLiteOpenHelper {
             @Override
             public void onComplete(VKResponse response) {
                 super.onComplete(response);
+                final ArrayList<Integer> user_ids = new ArrayList<>(), group_ids = new ArrayList<>();
                 try {
-                    ArrayList<Integer> user_ids = new ArrayList<>(), group_ids = new ArrayList<>();
                     db.beginTransaction();
-                    JSONArray items = response.json.getJSONArray("items");
+                    Log.d("json", response.responseString);
+                    JSONArray items = response.json.getJSONObject("response").getJSONArray("items");
                     for (int i = 0; i < items.length(); ++i) {
-                        JSONObject message = items.getJSONObject(i);
+                        JSONObject message = items.getJSONObject(i).getJSONObject("message");
                         int chat_id = message.has("chat_id") ? message.getInt("chat_id") : -1;
                         int user_id = message.getInt("user_id");
+                        Log.d("mytag", Integer.toString(user_id));
                         Utils.DIALOG_TYPE type = Utils.resolveTypeBySomeShitThankYouVK(user_id, chat_id);
                         int dialog_id = Utils.getDialogID(type, user_id, chat_id);
                         switch (type) {
@@ -70,80 +75,81 @@ public class DbHelper extends SQLiteOpenHelper {
                                 val.put("type", "chat");
                                 db.insertWithOnConflict("dialogs", null, val, SQLiteDatabase.CONFLICT_REPLACE);
                                 db.execSQL("INSERT OR REPLACE INTO names VALUES (" + Integer.toString(dialog_id) + ", " +
-                                        "'" + message.getString("title") +  "')");
+                                        "'" + message.getString("title") + "')");
+                                db.execSQL("INSERT OR REPLACE INTO pictures VALUES (" + Integer.toString(dialog_id) + ", " +
+                                        "'" + (message.has("photo_200") ? message.getString("photo_200") : "no_photo") + "')");
                                 break;
                             case USER:
                                 user_ids.add(dialog_id);
                                 break;
                             case COMMUNITY:
-                                group_ids.add(user_id);
+                                group_ids.add(-dialog_id);
                         }
                     }
                     db.endTransaction();
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                if (user_ids.size() > 0) {
                     VKRequest users = new VKRequest("users.get", VKParameters.from("user_ids", Utils.join(user_ids),
-                                                                                            "fields", "has_photo,photo_200"));
+                            "fields", "has_photo,photo_200"));
                     users.executeWithListener(new VKRequest.VKRequestListener() {
                         @Override
                         public void onComplete(VKResponse response) {
                             super.onComplete(response);
-                            VKList<VKApiUser> users = (VKList<VKApiUser>) response.parsedModel;
                             db.beginTransaction();
-                            for(VKApiUser user : users) {
-                                ContentValues val = new ContentValues();
-                                val.put("dialog_id", user.id);
-                                val.put("type", "user");
-                                db.insertWithOnConflict("dialogs", null, val, SQLiteDatabase.CONFLICT_REPLACE);
-                                db.execSQL("INSERT OR REPLACE INTO names VALUES (" + Integer.toString(user.id) + ", " +
-                                        "'" + user.first_name + " " + user.last_name +  "')");
+                            try {
+                                JSONArray users = response.json.getJSONArray("response");
+                                for (int i = 0; i < users.length(); ++i) {
+                                    ContentValues val = new ContentValues();
+                                    JSONObject user = users.getJSONObject(i);
+                                    val.put("dialog_id", user.getInt("id"));
+                                    val.put("type", "user");
+                                    db.insertWithOnConflict("dialogs", null, val, SQLiteDatabase.CONFLICT_REPLACE);
+                                    db.execSQL("INSERT OR REPLACE INTO names VALUES (" + Integer.toString(user.getInt("id")) + ", " +
+                                            "'" + user.getString("first_name") + " " + user.getString("last_name") + "')");
+                                    db.execSQL("INSERT OR REPLACE INTO pictures VALUES (" + Integer.toString(user.getInt("id")) + ", " +
+                                                "'" + (user.has("photo_200") ? user.getString("photo_200") : "no_photo") + "')");
+                                }
+                            } catch (JSONException ex) {
+                                ex.printStackTrace();
                             }
+                            db.endTransaction();
                         }
                     });
+                }
 
+                if (group_ids.size() > 0) {
                     VKRequest groups = new VKRequest("groups.getById", VKParameters.from("group_ids", Utils.join(group_ids)));
                     groups.executeWithListener(new VKRequest.VKRequestListener() {
                         @Override
                         public void onComplete(VKResponse response) {
                             super.onComplete(response);
                             // todo I just have copied this
-                            VKApiGroups users = (VKList<VKApiUser>) response.parsedModel;
+                            // I don't really know what vk.com is doing with array response
                             db.beginTransaction();
-                            for(VKApiUser user : users) {
-                                ContentValues val = new ContentValues();
-                                val.put("dialog_id", user.id);
-                                val.put("type", "user");
-                                db.insertWithOnConflict("dialogs", null, val, SQLiteDatabase.CONFLICT_REPLACE);
-                                db.execSQL("INSERT OR REPLACE INTO names VALUES (" + Integer.toString(user.id) + ", " +
-                                        "'" + user.first_name + " " + user.last_name +  "')");
+                            try {
+                                JSONArray array = response.json.getJSONObject("response").getJSONArray("items");
+                                for (int i = 0; i < array.length(); ++i) {
+                                    ContentValues val = new ContentValues();
+                                    JSONObject jj = array.getJSONObject(i).getJSONObject("message");
+                                    int id = -jj.getInt("id");
+                                    val.put("dialog_id", id);
+                                    val.put("type", "community");
+                                    db.insertWithOnConflict("dialogs", null, val, SQLiteDatabase.CONFLICT_REPLACE);
+                                    db.execSQL("INSERT OR REPLACE INTO names VALUES (" + Integer.toString(id) + ", " +
+                                            "'" + array.getJSONObject(i).getString("name") + "')");
+                                    db.execSQL("INSERT OR REPLACE INTO pictures VALUES (" + Integer.toString(id) + ", " +
+                                            "'" + (jj.has("photo_200") ? jj.getString("photo_200") : "no_photo") + "')");
+                                }
+                            } catch (JSONException ex) {
+                                ex.printStackTrace();
                             }
+                            db.endTransaction();
                         }
                     });
-
-                } catch (JSONException e) {
-                    e.printStackTrace();
                 }
             }
         });
-    }
-
-    public static String savePic(Bitmap pic, String username, Context context) {
-        SharedPreferences sPref = context.getSharedPreferences(Utils.settings, Context.MODE_PRIVATE);
-        File dir = sPref.getBoolean(Utils.external_storage, false) ? context.getExternalFilesDir(null) : context.getFilesDir();
-        String dbfile = dir.getAbsolutePath() + File.separator + "photos" + File.separator + username;
-        FileOutputStream out = null;
-        try {
-            out = new FileOutputStream(dbfile);
-            pic.compress(Bitmap.CompressFormat.PNG, 100, out);
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                if (out != null) {
-                    out.close();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        return dbfile;
     }
 }

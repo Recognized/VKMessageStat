@@ -4,37 +4,23 @@ import android.graphics.Bitmap;
 
 public class DialogData {
     // TODO here I should fetch my dialogs info from database
-    private Bitmap avatar;
-    private String name;
-    private Integer messages;
-    private Integer symbols;
-    private Integer dialog_id;
+    public String link;
+    public String name;
+    public Integer messages;
+    public Integer symbols;
+    public Integer dialog_id;
+    public Utils.DIALOG_TYPE type;
 
-    public DialogData(Integer dialog_id, String name, Bitmap avatar, Integer mcounter, Integer scounter) {
+    public DialogData(Integer dialog_id, Utils.DIALOG_TYPE type) {
+        this.dialog_id = dialog_id;
+        this.type = type;
+    }
+
+    public DialogData(Integer dialog_id, String name, String link, Integer mcounter, Integer scounter) {
         this.dialog_id = dialog_id;
         this.name = name;
-        this.avatar = avatar;
+        this.link = link;
         this.messages = mcounter;
         this.symbols = scounter;
-    }
-
-    public Integer getSymbols() {
-        return symbols;
-    }
-
-    public Integer getMessages() {
-        return messages;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public Bitmap getAvatar() {
-        return avatar;
-    }
-
-    public Integer getDialog_id() {
-        return dialog_id;
     }
 }

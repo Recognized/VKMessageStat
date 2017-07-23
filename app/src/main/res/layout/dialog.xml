@@ -6,14 +6,15 @@
 
 
     <ImageView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" app:srcCompat="@drawable/stub" android:id="@+id/main_page_avatar"
-    />
+            android:layout_height="100dp" app:srcCompat="@drawable/stub" android:id="@+id/main_page_avatar"
+            android:layout_width="100dp"/>
     <LinearLayout
             android:orientation="vertical"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:paddingStart="5dp">
+            android:paddingStart="5dp"
+            android:paddingEnd="5dp"
+            android:background="@drawable/bottom_line">
         <TextView
                 android:id="@+id/dialog_title"
                 android:text="Dialog name stub"
@@ -23,7 +24,7 @@
                 android:textSize="18sp"/>
         <TableLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent" android:background="@drawable/bottom_line">
+                android:layout_height="match_parent">
 
             <TableRow android:layout_width="match_parent" android:layout_height="match_parent">
                 <TextView

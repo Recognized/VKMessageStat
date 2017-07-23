@@ -1,11 +1,16 @@
 package com.vladsaif.vkmessagestat;
 
 import android.app.DownloadManager;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.*;
 import com.vk.sdk.api.VKParameters;
 import com.vk.sdk.api.VKRequest;
 import com.vk.sdk.api.VKResponse;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
@@ -55,7 +60,7 @@ public class Utils {
             case CHAT:
                 return chat_id + 2000000000;
             case COMMUNITY:
-                return -user_id;
+                return user_id;
             // this is never happened, but thank you java that you are worrying about my code :-*
             default:
                 return 666;
@@ -72,5 +77,52 @@ public class Utils {
         return temp.toString();
     }
 
+    // Returning absolute Path with file separator at the end
+    public static String getAppAbsolutePath(Context context) {
+        SharedPreferences sPref = context.getSharedPreferences(Utils.settings, Context.MODE_PRIVATE);
+        File dir = sPref.getBoolean(Utils.external_storage, false) ? context.getExternalFilesDir(null) : context.getFilesDir();
+        return dir.getAbsolutePath() + File.separator;
+    }
 
+    public static DIALOG_TYPE resolveType(String s) {
+        switch (s) {
+            case "chat": return DIALOG_TYPE.CHAT;
+            case "user": return DIALOG_TYPE.USER;
+            default: return DIALOG_TYPE.COMMUNITY;
+        }
+    }
+
+    public static void savePic(Bitmap pic, String filename, Context context) {
+        String dbfile = getAppAbsolutePath(context) + "photos" + File.separator + filename;
+        FileOutputStream out = null;
+        try {
+            out = new FileOutputStream(dbfile);
+            pic.compress(Bitmap.CompressFormat.PNG, 100, out);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (out != null) {
+                    out.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public static Bitmap loadPic(String link, BitmapFactory.Options options, Context context) {
+        String photoPath = getAppAbsolutePath(context) + "photos" + File.separator + transformLink(link);
+        try {
+            return BitmapFactory.decodeFile(photoPath, options);
+        } catch (Exception ex) {
+            return null;
+        }
+
+    }
+
+    public static String transformLink(String s) {
+        // some magical replacements providing unique filename
+        return s.substring(18).replace("/", "");
+    }
 }
