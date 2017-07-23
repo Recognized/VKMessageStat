@@ -1,6 +1,9 @@
 package com.vladsaif.vkmessagestat;
 
 import android.content.SharedPreferences;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteAbortException;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -10,6 +13,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.util.Pair;
 import android.view.View;
 import android.widget.ImageView;
@@ -18,6 +22,7 @@ import com.vk.sdk.VKAccessToken;
 import java.io.*;
 import java.net.URL;
 import java.net.URLDecoder;
+import java.util.concurrent.TimeUnit;
 
 public class MainPage extends AppCompatActivity {
 
@@ -51,9 +56,25 @@ public class MainPage extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_page);
         Toolbar toolbar = (Toolbar) findViewById(R.id.my_toolbar);
-        dbHelper = new DbHelper(getApplicationContext(), "dialogs");
+        dbHelper = new DbHelper(getApplicationContext(), "dialogs.db");
         mRecyclerView = (RecyclerView) findViewById(R.id.dialogs);
-        mRecyclerView.setAdapter(new DialogsAdapter(dbHelper.db, getApplicationContext(), new SetImage()));
+        //DbHelper.getDialogs(dbHelper.db, getApplicationContext());
+        Log.d("databasepath", getDatabasePath("dialogs.db").getAbsolutePath());
+        Cursor dialogs = dbHelper.db.rawQuery("SELECT dialog_id, type FROM dialogs", new String[]{});
+        if (dialogs.moveToFirst()) {
+            do {
+                Log.d("help", Integer.toString(dialogs.getInt(dialogs.getColumnIndex("dialog_id"))));
+            } while (dialogs.moveToNext());
+        }
+        dialogs.close();
+        try {
+            Thread.sleep(10000);
+        } catch (InterruptedException ex) {
+            Log.d("waiting", "interrupted");
+        }
+        mLayoutManager = new LinearLayoutManager(this);
+        mRecyclerView.setLayoutManager(mLayoutManager);
+        mRecyclerView.setAdapter(new DialogsAdapter(dbHelper, getApplicationContext(), new SetImage()));
         // TODO dont't forget to change title
         // TODO correct settings
         // setting common things
@@ -67,13 +88,10 @@ public class MainPage extends AppCompatActivity {
                 toolbar.setTitle(R.string.advanced_stat);
         }
         setSupportActionBar(toolbar);
-
         token = VKAccessToken.tokenFromSharedPreferences(getApplication(), "access_token");
 
         // do stuff with RecyclerView
-        mLayoutManager = new LinearLayoutManager(this);
-        mRecyclerView.setLayoutManager(mLayoutManager);
-
+        Log.d("after", "toolbar");
     }
 
     class SetImage extends AsyncTask<Object, Void, Pair<Bitmap, ImageView>> {
@@ -95,7 +113,6 @@ public class MainPage extends AppCompatActivity {
             }
             return new Pair<>(bitmap, (ImageView) objects[1]);
         }
-
         protected void onProgressUpdate(Void... params) {
         }
 

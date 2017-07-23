@@ -33,18 +33,18 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
     private MainPage.SetImage imageSetter;
     private Context context;
     private static final String here = "adapter";
+    private final SQLiteDatabase db;
 
-    public DialogsAdapter(final SQLiteDatabase db, Context context, MainPage.SetImage imageSetter) {
+    public DialogsAdapter(final DbHelper helper, Context context, MainPage.SetImage imageSetter) {
         this.imageSetter = imageSetter;
         this.context = context;
         data = new HashMap<>();
         options.inPreferredConfig = Bitmap.Config.ARGB_8888;
         positionToId = new ArrayList<>();
-
-        DbHelper.getDialogs(db, context);
-
+        db = helper.getWritableDatabase();
         // Copy-paste because I can't have functional interface
-        Cursor dialogs = db.rawQuery("SELECT * FROM dialogs", new String[]{});
+        Log.d("db", db.getPath());
+        Cursor dialogs = db.rawQuery("SELECT dialog_id, type FROM dialogs", new String[]{});
         Log.d(here, "count " + Integer.toString(dialogs.getCount()));
         if (dialogs.getCount() > 0) {
             dialogs.moveToFirst();
@@ -57,7 +57,7 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
         }
         dialogs.close();
 
-        Cursor names = db.rawQuery("SELECT * FROM names", new String[]{});
+        Cursor names = db.rawQuery("SELECT dialog_id, name FROM names", new String[]{});
         if (names.getCount() > 0) {
             names.moveToFirst();
             do {
@@ -67,7 +67,7 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
         }
         names.close();
 
-        Cursor pictures = db.rawQuery("SELECT * FROM pictures", new String[]{});
+        Cursor pictures = db.rawQuery("SELECT dialog_id, link FROM pictures", new String[]{});
         if (pictures.getCount() > 0) {
             pictures.moveToFirst();
             do {

@@ -4,6 +4,7 @@ import android.app.DownloadManager;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.graphics.Bitmap;
@@ -33,14 +34,18 @@ public class DbHelper extends SQLiteOpenHelper {
     public DbHelper(final Context context, String databaseName) {
         super(new DatabaseContext(context), databaseName, null, DATABASE_VERSION);
         db = getWritableDatabase();
+        onCreate(db);
     }
 
     @Override
     public void onCreate(SQLiteDatabase data) {
+        Log.d("db", "oncreate");
+        data.beginTransaction();
         data.execSQL("CREATE TABLE IF NOT EXISTS dialogs (dialog_id INTEGER PRIMARY KEY, type TEXT)");
         data.execSQL("CREATE TABLE IF NOT EXISTS last_message_id (dialog_id INTEGER PRIMARY KEY, message_id INT)");
         data.execSQL("CREATE TABLE IF NOT EXISTS names (dialog_id INTEGER PRIMARY KEY, name TEXT)");
         data.execSQL("CREATE TABLE IF NOT EXISTS pictures (dialog_id INTEGER PRIMARY KEY, link TEXT)");
+        data.endTransaction();
     }
 
     @Override
@@ -56,9 +61,11 @@ public class DbHelper extends SQLiteOpenHelper {
             @Override
             public void onComplete(VKResponse response) {
                 super.onComplete(response);
+                VKRequest users, groups;
                 final ArrayList<Integer> user_ids = new ArrayList<>(), group_ids = new ArrayList<>();
                 try {
                     db.beginTransaction();
+                    Log.d("db", db.getPath());
                     Log.d("json", response.responseString);
                     JSONArray items = response.json.getJSONObject("response").getJSONArray("items");
                     for (int i = 0; i < items.length(); ++i) {
@@ -91,13 +98,14 @@ public class DbHelper extends SQLiteOpenHelper {
                     e.printStackTrace();
                 }
                 if (user_ids.size() > 0) {
-                    VKRequest users = new VKRequest("users.get", VKParameters.from("user_ids", Utils.join(user_ids),
+                    users = new VKRequest("users.get", VKParameters.from("user_ids", Utils.join(user_ids),
                             "fields", "has_photo,photo_200"));
                     users.executeWithListener(new VKRequest.VKRequestListener() {
                         @Override
                         public void onComplete(VKResponse response) {
                             super.onComplete(response);
                             db.beginTransaction();
+                            Log.d("db", db.getPath());
                             try {
                                 JSONArray users = response.json.getJSONArray("response");
                                 for (int i = 0; i < users.length(); ++i) {
@@ -120,7 +128,7 @@ public class DbHelper extends SQLiteOpenHelper {
                 }
 
                 if (group_ids.size() > 0) {
-                    VKRequest groups = new VKRequest("groups.getById", VKParameters.from("group_ids", Utils.join(group_ids)));
+                    groups = new VKRequest("groups.getById", VKParameters.from("group_ids", Utils.join(group_ids)));
                     groups.executeWithListener(new VKRequest.VKRequestListener() {
                         @Override
                         public void onComplete(VKResponse response) {
