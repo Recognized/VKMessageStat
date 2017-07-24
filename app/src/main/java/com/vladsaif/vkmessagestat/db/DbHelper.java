@@ -1,29 +1,18 @@
-package com.vladsaif.vkmessagestat;
+package com.vladsaif.vkmessagestat.db;
 
-import android.app.DownloadManager;
 import android.content.ContentValues;
 import android.content.Context;
-import android.content.SharedPreferences;
-import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.graphics.Bitmap;
 import android.util.Log;
-import com.vk.sdk.api.VKApiConst;
 import com.vk.sdk.api.VKParameters;
 import com.vk.sdk.api.VKRequest;
 import com.vk.sdk.api.VKResponse;
-import com.vk.sdk.api.methods.VKApiGroups;
-import com.vk.sdk.api.model.VKApiUser;
-import com.vk.sdk.api.model.VKList;
-import com.vk.sdk.api.model.VKUsersArray;
+import com.vladsaif.vkmessagestat.utils.Easies;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 
 
@@ -69,8 +58,8 @@ public class DbHelper extends SQLiteOpenHelper {
                         int chat_id = message.has("chat_id") ? message.getInt("chat_id") : -1;
                         int user_id = message.getInt("user_id");
                         Log.d("mytag", Integer.toString(user_id));
-                        Utils.DIALOG_TYPE type = Utils.resolveTypeBySomeShitThankYouVK(user_id, chat_id);
-                        int dialog_id = Utils.getDialogID(type, user_id, chat_id);
+                        Easies.DIALOG_TYPE type = Easies.resolveTypeBySomeShitThankYouVK(user_id, chat_id);
+                        int dialog_id = Easies.getDialogID(type, user_id, chat_id);
                         switch (type) {
                             case CHAT:
                                 ContentValues val = new ContentValues();
@@ -93,7 +82,7 @@ public class DbHelper extends SQLiteOpenHelper {
                     e.printStackTrace();
                 }
                 if (user_ids.size() > 0) {
-                    users = new VKRequest("users.get", VKParameters.from("user_ids", Utils.join(user_ids),
+                    users = new VKRequest("users.get", VKParameters.from("user_ids", Easies.join(user_ids),
                             "fields", "has_photo,photo_200"));
                     users.executeWithListener(new VKRequest.VKRequestListener() {
                         @Override
@@ -121,7 +110,7 @@ public class DbHelper extends SQLiteOpenHelper {
                 }
 
                 if (group_ids.size() > 0) {
-                    groups = new VKRequest("groups.getById", VKParameters.from("group_ids", Utils.join(group_ids)));
+                    groups = new VKRequest("groups.getById", VKParameters.from("group_ids", Easies.join(group_ids)));
                     groups.executeWithListener(new VKRequest.VKRequestListener() {
                         @Override
                         public void onComplete(VKResponse response) {

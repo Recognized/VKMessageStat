@@ -1,11 +1,10 @@
-package com.vladsaif.vkmessagestat;
+package com.vladsaif.vkmessagestat.adapters;
 
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.os.AsyncTask;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -14,28 +13,25 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import com.vk.sdk.api.VKApi;
-import com.vk.sdk.api.model.VKApiPhoto;
+import com.vladsaif.vkmessagestat.R;
+import com.vladsaif.vkmessagestat.db.DbHelper;
+import com.vladsaif.vkmessagestat.db.DialogData;
+import com.vladsaif.vkmessagestat.utils.*;
 
-import java.io.File;
-import java.io.InputStream;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
 
 public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHolder> {
 
     private HashMap<Integer, DialogData> data;
     private ArrayList<Integer> positionToId;
     private static BitmapFactory.Options options = new BitmapFactory.Options();
-    private MainPage.SetImage imageSetter;
+    private SetImage imageSetter;
     private Context context;
     private static final String here = "adapter";
     private final SQLiteDatabase db;
 
-    public DialogsAdapter(final DbHelper helper, Context context, MainPage.SetImage imageSetter) {
+    public DialogsAdapter(final DbHelper helper, Context context, SetImage imageSetter) {
         this.imageSetter = imageSetter;
         this.context = context;
         data = new HashMap<>();
@@ -52,7 +48,7 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
                 Integer id = dialogs.getInt(dialogs.getColumnIndex("dialog_id"));
                 positionToId.add(id);
                 String type = dialogs.getString(dialogs.getColumnIndex("type"));
-                data.put(id, new DialogData(id, Utils.resolveType(type)));
+                data.put(id, new DialogData(id, Easies.resolveType(type)));
             } while (dialogs.moveToNext());
         }
         dialogs.close();
@@ -108,9 +104,9 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
     public void onBindViewHolder(DialogsAdapter.ViewHolder holder, int position) {
         Log.d(here, "onBindViewHolder");
         Integer dialog_id = positionToId.get(position);
-        Bitmap image = Utils.loadPic(data.get(dialog_id).link, options, context);
+        Bitmap image = Easies.loadPic(data.get(dialog_id).link, options, context);
         if (image == null) {
-            (new MainPage.SetImage()).execute(new AsyncParam(data.get(dialog_id).link, holder.avatar, context));
+            (new SetImage()).execute(new AsyncParam(data.get(dialog_id).link, holder.avatar, context));
         } else {
             holder.avatar.setImageBitmap(image);
         }

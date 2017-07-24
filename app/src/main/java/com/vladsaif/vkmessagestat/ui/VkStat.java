@@ -1,4 +1,4 @@
-package com.vladsaif.vkmessagestat;
+package com.vladsaif.vkmessagestat.ui;
 
 import android.app.Application;
 import com.vk.sdk.VKSdk;

@@ -1,26 +1,19 @@
-package com.vladsaif.vkmessagestat;
+package com.vladsaif.vkmessagestat.utils;
 
-import android.app.DownloadManager;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.*;
 import android.util.Log;
-import com.vk.sdk.api.VKParameters;
-import com.vk.sdk.api.VKRequest;
-import com.vk.sdk.api.VKResponse;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.concurrent.Future;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Created by vlad9 on 20.07.2017.
  */
-public class Utils {
+public class Easies {
     public static final String settings = "settings";
     public static final String external_storage = "external_storage";
 
@@ -80,8 +73,8 @@ public class Utils {
 
     // Returning absolute Path with file separator at the end
     public static String getAppAbsolutePath(Context context) {
-        SharedPreferences sPref = context.getSharedPreferences(Utils.settings, Context.MODE_PRIVATE);
-        File dir = sPref.getBoolean(Utils.external_storage, false) ? context.getExternalFilesDir(null) : context.getFilesDir();
+        SharedPreferences sPref = context.getSharedPreferences(Easies.settings, Context.MODE_PRIVATE);
+        File dir = sPref.getBoolean(Easies.external_storage, false) ? context.getExternalFilesDir(null) : context.getFilesDir();
         return dir.getAbsolutePath() + File.separator;
     }
 

@@ -1,6 +1,6 @@
-package com.vladsaif.vkmessagestat;
+package com.vladsaif.vkmessagestat.db;
 
-import android.graphics.Bitmap;
+import com.vladsaif.vkmessagestat.utils.Easies;
 
 public class DialogData {
     // TODO here I should fetch my dialogs info from database
@@ -9,9 +9,9 @@ public class DialogData {
     public Integer messages;
     public Integer symbols;
     public Integer dialog_id;
-    public Utils.DIALOG_TYPE type;
+    public Easies.DIALOG_TYPE type;
 
-    public DialogData(Integer dialog_id, Utils.DIALOG_TYPE type) {
+    public DialogData(Integer dialog_id, Easies.DIALOG_TYPE type) {
         this.dialog_id = dialog_id;
         this.type = type;
     }

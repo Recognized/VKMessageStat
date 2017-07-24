@@ -1,4 +1,4 @@
-package com.vladsaif.vkmessagestat;
+package com.vladsaif.vkmessagestat.db;
 
 import android.content.Context;
 import android.content.ContextWrapper;
@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import android.database.DatabaseErrorHandler;
 import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
+import com.vladsaif.vkmessagestat.utils.Easies;
 
 import java.io.File;
 
@@ -19,8 +20,8 @@ class DatabaseContext extends ContextWrapper {
 
     @Override
     public File getDatabasePath(String name) {
-        SharedPreferences sPref = getSharedPreferences(Utils.settings, Context.MODE_PRIVATE);
-        File dir = sPref.getBoolean(Utils.external_storage, false) ? getExternalFilesDir(null) : getFilesDir();
+        SharedPreferences sPref = getSharedPreferences(Easies.settings, Context.MODE_PRIVATE);
+        File dir = sPref.getBoolean(Easies.external_storage, false) ? getExternalFilesDir(null) : getFilesDir();
         String dbfile = dir.getAbsolutePath() + File.separator + "databases" + File.separator + name;
         if (!dbfile.endsWith(".db")) {
             dbfile += ".db";
