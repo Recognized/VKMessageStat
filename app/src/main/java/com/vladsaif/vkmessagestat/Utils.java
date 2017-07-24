@@ -94,10 +94,12 @@ public class Utils {
     }
 
     public static void savePic(Bitmap pic, String filename, Context context) {
-        String dbfile = getAppAbsolutePath(context) + "photos" + File.separator + filename;
+        String dbfile = getAppAbsolutePath(context) + "photos" + File.separator;
+        File folder = new File(dbfile);
+        folder.mkdirs();
         FileOutputStream out = null;
         try {
-            out = new FileOutputStream(dbfile);
+            out = new FileOutputStream(dbfile + filename);
             pic.compress(Bitmap.CompressFormat.PNG, 100, out);
         } catch (Exception e) {
             e.printStackTrace();
@@ -113,10 +115,14 @@ public class Utils {
     }
 
     public static Bitmap loadPic(String link, BitmapFactory.Options options, Context context) {
-        String photoPath = getAppAbsolutePath(context) + "photos" + File.separator + transformLink(link);
+        String photoPath = getAppAbsolutePath(context) + "photos" + File.separator;;
+        File folder = new File(photoPath);
+        folder.mkdirs();
         try {
-            return BitmapFactory.decodeFile(photoPath, options);
+            Log.d("load", "picture is loaded");
+            return BitmapFactory.decodeFile(photoPath + transformLink(link), options);
         } catch (Exception ex) {
+            Log.d("load", "picture isn't loaded");
             return null;
         }
 

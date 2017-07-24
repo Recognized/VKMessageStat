@@ -69,14 +69,7 @@ public class MainPage extends AppCompatActivity {
         } catch (InterruptedException ex) {
             Log.d("waiting", "interrupted");
         }
-        Log.d("databasepath", getDatabasePath("dialogs.db").getAbsolutePath());
-        Cursor dialogs = dbHelper.db.rawQuery("SELECT dialog_id, type FROM dialogs;", new String[]{});
-        if (dialogs.moveToFirst()) {
-            do {
-                Log.d("help", Integer.toString(dialogs.getInt(dialogs.getColumnIndex("dialog_id"))));
-            } while (dialogs.moveToNext());
-        }
-        dialogs.close();
+
         mLayoutManager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(mLayoutManager);
         mRecyclerView.setAdapter(new DialogsAdapter(dbHelper, getApplicationContext(), new SetImage()));
