@@ -38,8 +38,10 @@ public class MainPage extends AppCompatActivity {
             try {
                 File test = new File(getExternalFilesDir(null), "test");
                 OutputStream os = new FileOutputStream(test);
+                Log.d("main_storage", "external");
                 edit.putBoolean(Easies.external_storage, true);
             } catch (IOException ex) {
+                Log.d("main_storage", "internal");
                 edit.putBoolean(Easies.external_storage, false);
             }
             edit.apply();
@@ -51,7 +53,6 @@ public class MainPage extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_page);
         Toolbar toolbar = (Toolbar) findViewById(R.id.my_toolbar);
-        Log.d("tag", "first call Db");
         dbHelper = new DbHelper(getApplicationContext(), "dialogs.db");
         mRecyclerView = (RecyclerView) findViewById(R.id.dialogs);
         DbHelper.getDialogs(dbHelper.db, getApplicationContext());

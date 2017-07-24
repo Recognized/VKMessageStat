@@ -14,6 +14,7 @@ import java.util.ArrayList;
  * Created by vlad9 on 20.07.2017.
  */
 public class Easies {
+    //some string constants
     public static final String settings = "settings";
     public static final String external_storage = "external_storage";
 
