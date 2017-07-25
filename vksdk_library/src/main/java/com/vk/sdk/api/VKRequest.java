@@ -626,6 +626,16 @@ public class VKRequest extends VKObject {
      * Copyright (c) 2013 VK. All rights reserved.
      */
     public static abstract class VKRequestListener {
+        //--------------------------------------------
+        // fork start
+        private Handler.Callback callback;
+
+        public VKRequestListener(Handler.Callback callback) {
+            this.callback = callback;
+        }
+        // fork end
+        //--------------------------------------------
+        public VKRequestListener() {}
         /**
          * Called if there were no HTTP or API errors, returns execution result.
          *

@@ -8,6 +8,7 @@ import android.util.Log;
 import com.vk.sdk.api.VKParameters;
 import com.vk.sdk.api.VKRequest;
 import com.vk.sdk.api.VKResponse;
+import com.vladsaif.vkmessagestat.ui.MainPage;
 import com.vladsaif.vkmessagestat.utils.Easies;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -40,9 +41,10 @@ public class DbHelper extends SQLiteOpenHelper {
         //pass TODO maybe, or don't give a fuck about this
     }
 
-    public static void getDialogs(final SQLiteDatabase db, Context context) {
+    public static void getDialogs(final SQLiteDatabase db, final MainPage context) {
         // TODO maybe I need fix locale somehow
         VKRequest req = new VKRequest("messages.getDialogs", VKParameters.from("count", "20"));
+        context.responses++;
         req.executeWithListener(new VKRequest.VKRequestListener() {
             @Override
             public void onComplete(VKResponse response) {
@@ -82,6 +84,7 @@ public class DbHelper extends SQLiteOpenHelper {
                     e.printStackTrace();
                 }
                 if (user_ids.size() > 0) {
+                    context.responses++;
                     users = new VKRequest("users.get", VKParameters.from("user_ids", Easies.join(user_ids),
                             "fields", "has_photo,photo_200"));
                     users.executeWithListener(new VKRequest.VKRequestListener() {
@@ -105,11 +108,13 @@ public class DbHelper extends SQLiteOpenHelper {
                             } catch (JSONException ex) {
                                 ex.printStackTrace();
                             }
+                            context.onResult(null);
                         }
                     });
                 }
 
                 if (group_ids.size() > 0) {
+                    context.responses++;
                     groups = new VKRequest("groups.getById", VKParameters.from("group_ids", Easies.join(group_ids)));
                     groups.executeWithListener(new VKRequest.VKRequestListener() {
                         @Override
@@ -134,9 +139,11 @@ public class DbHelper extends SQLiteOpenHelper {
                             } catch (JSONException ex) {
                                 ex.printStackTrace();
                             }
+                            context.onResult(null);
                         }
                     });
                 }
+                context.onResult(null);
             }
         });
     }

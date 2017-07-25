@@ -7,6 +7,7 @@ import android.database.DatabaseErrorHandler;
 import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 import com.vladsaif.vkmessagestat.utils.Easies;
+import com.vladsaif.vkmessagestat.utils.Strings;
 
 import java.io.File;
 
@@ -20,9 +21,7 @@ class DatabaseContext extends ContextWrapper {
 
     @Override
     public File getDatabasePath(String name) {
-        SharedPreferences sPref = getSharedPreferences(Easies.settings, Context.MODE_PRIVATE);
-        File dir = sPref.getBoolean(Easies.external_storage, false) ? getExternalFilesDir(null) : getFilesDir();
-        String dbfile = dir.getAbsolutePath() + File.separator + "databases" + File.separator + name;
+        String dbfile = Easies.getDatabasesPath(this) + name;
         if (!dbfile.endsWith(".db")) {
             dbfile += ".db";
         }

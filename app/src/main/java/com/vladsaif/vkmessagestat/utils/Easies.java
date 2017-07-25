@@ -14,11 +14,8 @@ import java.util.ArrayList;
  * Created by vlad9 on 20.07.2017.
  */
 public class Easies {
-    //some string constants
-    public static final String settings = "settings";
-    public static final String external_storage = "external_storage";
-
     public enum DIALOG_TYPE {USER, CHAT, COMMUNITY}
+    private static final String LOG_TAG = "Utils.Easies";
 
     // Use only for avatar's of users
     public static Bitmap getCircleBitmap(Bitmap source) {
@@ -74,21 +71,29 @@ public class Easies {
 
     // Returning absolute Path with file separator at the end
     public static String getAppAbsolutePath(Context context) {
-        SharedPreferences sPref = context.getSharedPreferences(Easies.settings, Context.MODE_PRIVATE);
-        File dir = sPref.getBoolean(Easies.external_storage, false) ? context.getExternalFilesDir(null) : context.getFilesDir();
+        SharedPreferences sPref = context.getSharedPreferences(Strings.settings, Context.MODE_PRIVATE);
+        File dir = sPref.getBoolean(Strings.external_storage, false) ? context.getExternalFilesDir(null) : context.getFilesDir();
         return dir.getAbsolutePath() + File.separator;
+    }
+
+    public static String getPhotosPath(Context context) {
+        return getAppAbsolutePath(context) + Strings.photos_dir + File.separator;
+    }
+
+    public static String getDatabasesPath(Context context) {
+        return getAppAbsolutePath(context) + Strings.databases_dir + File.separator;
     }
 
     public static DIALOG_TYPE resolveType(String s) {
         switch (s) {
-            case "chat": return DIALOG_TYPE.CHAT;
-            case "user": return DIALOG_TYPE.USER;
+            case Strings.chat: return DIALOG_TYPE.CHAT;
+            case Strings.user: return DIALOG_TYPE.USER;
             default: return DIALOG_TYPE.COMMUNITY;
         }
     }
 
     public static void savePic(Bitmap pic, String filename, Context context) {
-        String dbfile = getAppAbsolutePath(context) + "photos" + File.separator;
+        String dbfile = getAppAbsolutePath(context) + Strings.photos_dir + File.separator;
         File folder = new File(dbfile);
         folder.mkdirs();
         FileOutputStream out = null;
@@ -109,14 +114,14 @@ public class Easies {
     }
 
     public static Bitmap loadPic(String link, BitmapFactory.Options options, Context context) {
-        String photoPath = getAppAbsolutePath(context) + "photos" + File.separator;;
+        String photoPath = getPhotosPath(context);
         File folder = new File(photoPath);
         folder.mkdirs();
         try {
-            Log.d("load", "picture is loaded");
+            Log.d(LOG_TAG, "picture is loaded");
             return BitmapFactory.decodeFile(photoPath + transformLink(link), options);
         } catch (Exception ex) {
-            Log.d("load", "picture isn't loaded");
+            Log.d(LOG_TAG, "picture isn't loaded, trying download");
             return null;
         }
 

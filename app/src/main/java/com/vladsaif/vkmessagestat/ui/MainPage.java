@@ -2,12 +2,16 @@ package com.vladsaif.vkmessagestat.ui;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import com.vk.sdk.VKAccessToken;
+import com.vk.sdk.VKCallback;
+import com.vk.sdk.api.VKError;
+import com.vk.sdk.api.VKResponse;
 import com.vladsaif.vkmessagestat.*;
 import com.vladsaif.vkmessagestat.adapters.DialogsAdapter;
 import com.vladsaif.vkmessagestat.db.DbHelper;
@@ -19,12 +23,15 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
-public class MainPage extends AppCompatActivity {
+public class MainPage extends AppCompatActivity implements VKCallback<Void> {
 
     private VKAccessToken token;
     private RecyclerView mRecyclerView;
     private LinearLayoutManager mLayoutManager;
     private DbHelper dbHelper;
+    Handler mHandler;
+    public int responses;
+    private final String LOG_TAG = "myTag";
 
     @Override
     protected void onStart() {
@@ -32,16 +39,17 @@ public class MainPage extends AppCompatActivity {
         // Check if app can write database to sdcard or something
         // I don't really know how to check how much memory is available
         // so there is no other way for me except forgetting about this problem
+        responses = 0;
         SharedPreferences sPref = getSharedPreferences(Easies.settings, MODE_PRIVATE);
         if (!sPref.contains(Easies.external_storage)) {
             SharedPreferences.Editor edit = sPref.edit();
             try {
                 File test = new File(getExternalFilesDir(null), "test");
                 OutputStream os = new FileOutputStream(test);
-                Log.d("main_storage", "external");
+                Log.d(LOG_TAG, "using external storage");
                 edit.putBoolean(Easies.external_storage, true);
             } catch (IOException ex) {
-                Log.d("main_storage", "internal");
+                Log.d(LOG_TAG, "using internal storage");
                 edit.putBoolean(Easies.external_storage, false);
             }
             edit.apply();
@@ -55,17 +63,10 @@ public class MainPage extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.my_toolbar);
         dbHelper = new DbHelper(getApplicationContext(), "dialogs.db");
         mRecyclerView = (RecyclerView) findViewById(R.id.dialogs);
-        DbHelper.getDialogs(dbHelper.db, getApplicationContext());
-        try {
-            Thread.sleep(10000);
-        } catch (InterruptedException ex) {
-            Log.d("waiting", "interrupted");
-        }
-
+        mHandler = new Handler();
+        DbHelper.getDialogs(dbHelper.db, this);
         mLayoutManager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(mLayoutManager);
-        mRecyclerView.setAdapter(new DialogsAdapter(dbHelper, getApplicationContext(), new SetImage()));
-        // TODO dont't forget to change title
         // TODO correct settings
         // setting common things
         SharedPreferences sPref = getSharedPreferences(Easies.settings, MODE_PRIVATE);
@@ -79,9 +80,27 @@ public class MainPage extends AppCompatActivity {
         }
         setSupportActionBar(toolbar);
         token = VKAccessToken.tokenFromSharedPreferences(getApplication(), "access_token");
+    }
 
-        // do stuff with RecyclerView
-        Log.d("after", "toolbar");
+    @Override
+    public void onResult(Void nothing) {
+        mHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                Log.d("mytag", "callback response");
+                responses--;
+                if(responses == 0){
+                    Log.d("mytag", "adapter set");
+                    mRecyclerView.setAdapter(new DialogsAdapter(dbHelper, getApplicationContext(), new SetImage()));
+                }
+            }
+        });
+    }
+
+    @Override
+    public void onError(VKError error) {
+        // do nothing for now
+        // TODO
     }
 
     enum STAT_MODE {
