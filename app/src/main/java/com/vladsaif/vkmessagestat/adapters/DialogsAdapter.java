@@ -23,13 +23,13 @@ import java.util.HashMap;
 
 public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHolder> {
 
+    private static final String here = "adapter";
+    private static BitmapFactory.Options options = new BitmapFactory.Options();
+    private final SQLiteDatabase db;
     private HashMap<Integer, DialogData> data;
     private ArrayList<Integer> positionToId;
-    private static BitmapFactory.Options options = new BitmapFactory.Options();
     private SetImage imageSetter;
     private Context context;
-    private static final String here = "adapter";
-    private final SQLiteDatabase db;
 
     public DialogsAdapter(final DbHelper helper, Context context, SetImage imageSetter) {
         this.imageSetter = imageSetter;
@@ -75,23 +75,6 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
         pictures.close();
     }
 
-    public static class ViewHolder extends RecyclerView.ViewHolder {
-        public LinearLayout layout;
-        public ImageView avatar;
-        public TextView title;
-        public TextView mcounter;
-        public TextView scounter;
-
-        public ViewHolder(View v) {
-            super(v);
-            layout = (LinearLayout) v;
-            avatar = layout.findViewById(R.id.main_page_avatar);
-            title = layout.findViewById(R.id.dialog_title);
-            mcounter = layout.findViewById(R.id.mcounter);
-            scounter = layout.findViewById(R.id.scounter);
-        }
-    }
-
     @Override
     public DialogsAdapter.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View v = LayoutInflater.from(parent.getContext())
@@ -119,6 +102,23 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
     public int getItemCount() {
         Log.d(here, "itemcount " + Integer.toString(data.size()));
         return data.size();
+    }
+
+    public static class ViewHolder extends RecyclerView.ViewHolder {
+        public LinearLayout layout;
+        public ImageView avatar;
+        public TextView title;
+        public TextView mcounter;
+        public TextView scounter;
+
+        public ViewHolder(View v) {
+            super(v);
+            layout = (LinearLayout) v;
+            avatar = layout.findViewById(R.id.main_page_avatar);
+            title = layout.findViewById(R.id.dialog_title);
+            mcounter = layout.findViewById(R.id.mcounter);
+            scounter = layout.findViewById(R.id.scounter);
+        }
     }
 
 

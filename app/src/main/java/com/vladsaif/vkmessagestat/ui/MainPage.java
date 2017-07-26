@@ -26,12 +26,12 @@ import java.io.OutputStream;
 
 public class MainPage extends AppCompatActivity implements VKCallback<Void> {
 
+    private final String LOG_TAG = "myTag";
+    public int responses;
     private VKAccessToken token;
     private RecyclerView mRecyclerView;
     private LinearLayoutManager mLayoutManager;
     private DbHelper dbHelper;
-    public int responses;
-    private final String LOG_TAG = "myTag";
 
     @Override
     protected void onStart() {

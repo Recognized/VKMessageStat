@@ -23,5 +23,12 @@ public class Strings {
             start_message_id = "start_message_id",
             type = "type",
             community = "community",
-            no_photo = "no_photo";
+            no_photo = "no_photo",
+            prefix_messages = "prefix_messages",
+            body = "body",
+            id = "id",
+            date = "date",
+            message_id = "message_id",
+            names = "names",
+            pictures = "pictures";
 }

@@ -1,6 +1,7 @@
 package com.vladsaif.vkmessagestat.services;
 
 import android.app.Service;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.sqlite.SQLiteDatabase;
@@ -14,19 +15,24 @@ import com.vk.sdk.api.VKRequest;
 import com.vk.sdk.api.VKResponse;
 import com.vladsaif.vkmessagestat.db.DbHelper;
 import com.vladsaif.vkmessagestat.utils.Strings;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.Calendar;
 import java.util.Date;
 
+import static android.webkit.ConsoleMessage.MessageLevel.LOG;
+
 public class MessagesCollector extends Service {
-    private Handler mainHandler;
-    private String access_token;
+    static final int fixedDelayMs = 1000;
     private static final String LOG_TAG = "MyService";
+    static int requests = 0;
+    static long prev_request = 0;
     private final DbHelper dbHelper;
     private final SQLiteDatabase db;
-    static int requests = 0;
-    static final int fixedDelayMs = 1000;
-    static long prev_request = 0;
+    private Handler mainHandler;
+    private String access_token;
 
     public MessagesCollector() {
         dbHelper = new DbHelper(getApplicationContext(), Strings.dialogs);
@@ -50,13 +56,23 @@ public class MessagesCollector extends Service {
         throw new UnsupportedOperationException("Not yet implemented");
     }
 
+    public interface ResponseWork {
+        int doWork(VKResponse response);
+    }
+
+    public interface DumpCallback {
+        void onComplete(int new_start_message_id);
+    }
+
     public final class DumpMessagePack implements Runnable {
         private int peer_id;
         private int start_message_id;
+        private String tableName;
 
         public DumpMessagePack(int peer_id, int start_message_id) {
-            db.execSQL("CREATE TABLE IF NOT EXISTS t" + Integer.toString(peer_id) +
-                    " (message_id INTEGER PRIMARY KEY ON CONFLICT REPLACE, body TEXT, date INT)");
+            this.tableName = Strings.prefix_messages + Integer.toString(peer_id);
+            db.execSQL("CREATE TABLE IF NOT EXISTS "  + tableName +
+                    " (message_id INTEGER PRIMARY KEY ON CONFLICT REPLACE, body TEXT, date INT);");
             this.peer_id = peer_id;
             this.start_message_id = start_message_id;
         }
@@ -72,12 +88,34 @@ public class MessagesCollector extends Service {
                     Integer.toString(start_message_id)), new ResponseWork() {
                 @Override
                 public int doWork(VKResponse response) {
-
+                    try {
+                        JSONArray messages = response.json.getJSONArray("result");
+                        int skipped = response.json.getJSONArray("result").getJSONObject(0).getInt("skipped");
+                        db.beginTransaction();
+                        for (int i = 0; i < messages.length(); ++i) {
+                            JSONArray msg = messages.getJSONObject(i).getJSONArray("items");
+                            for (int j = 0; j < msg.length(); ++j) {
+                                JSONObject js = msg.getJSONObject(j);
+                                ContentValues cv = new ContentValues();
+                                cv.put(Strings.message_id, js.getInt(Strings.id));
+                                cv.put(Strings.body, js.getString(Strings.body));
+                                cv.put(Strings.date, js.getInt(Strings.date));
+                                db.insertWithOnConflict(tableName, null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+                            }
+                        }
+                        db.endTransaction();
+                        // TODO add progress bar
+                        // TODO add func to get last_message_id;
+                        return response.json.getInt("new_start");
+                    } catch (JSONException ex) {
+                        Log.e(LOG_TAG, ex.toString());
+                        return -1;
+                    }
                 }
             }, new DumpCallback() {
                 @Override
                 public void onComplete(int new_start_message_id) {
-                    if (new_start_message_id < 0) ;
+                    if (new_start_message_id < 0) // todo end recursion;
                     getMessages(new_start_message_id);
                 }
             });
@@ -113,14 +151,6 @@ public class MessagesCollector extends Service {
                 mainHandler.postDelayed(task, delay);
             }
         }
-    }
-
-    public interface ResponseWork {
-        int doWork(VKResponse response);
-    }
-
-    public interface DumpCallback {
-        void onComplete(int new_start_message_id);
     }
 
 

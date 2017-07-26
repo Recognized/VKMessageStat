@@ -26,10 +26,12 @@ import java.util.Random;
 
 public class VKObject {
     private static final HashMap<Long, VKObject> sRegisteredObjects;
-    private long mRegisteredObjectId = 0;
+
     static {
         sRegisteredObjects = new HashMap<>();
     }
+
+    private long mRegisteredObjectId = 0;
 
     /**
      * Returns object saved in local cache

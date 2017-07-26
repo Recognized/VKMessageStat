@@ -20,27 +20,13 @@ import java.util.ArrayList;
 
 public class DbHelper extends SQLiteOpenHelper {
     private static final int DATABASE_VERSION = 1;
-    public final SQLiteDatabase db;
     private static final String LOG_TAG = "DbHelper";
+    public final SQLiteDatabase db;
 
     public DbHelper(final Context context, String databaseName) {
         super(new DatabaseContext(context), databaseName, null, DATABASE_VERSION);
         db = getWritableDatabase();
         onCreate(db);
-    }
-
-    @Override
-    public void onCreate(SQLiteDatabase data) {
-        Log.d(LOG_TAG, "oncreate");
-        data.execSQL("CREATE TABLE IF NOT EXISTS dialogs (dialog_id INTEGER PRIMARY KEY, type TEXT);");
-        data.execSQL("CREATE TABLE IF NOT EXISTS last_message_id (dialog_id INTEGER PRIMARY KEY, message_id INT);");
-        data.execSQL("CREATE TABLE IF NOT EXISTS names (dialog_id INTEGER PRIMARY KEY, name TEXT);");
-        data.execSQL("CREATE TABLE IF NOT EXISTS pictures (dialog_id INTEGER PRIMARY KEY, link TEXT);");
-    }
-
-    @Override
-    public void onUpgrade(SQLiteDatabase sqLiteDatabase, int i, int i1) {
-        //pass TODO maybe, or don't give a fuck about this
     }
 
     public static void getDialogs(final SQLiteDatabase db, final MainPage context) {
@@ -105,7 +91,7 @@ public class DbHelper extends SQLiteOpenHelper {
                                     db.execSQL("INSERT OR REPLACE INTO names VALUES (" + Integer.toString(user.getInt("id")) + ", " +
                                             "'" + user.getString("first_name") + " " + user.getString("last_name") + "');");
                                     db.execSQL("INSERT OR REPLACE INTO pictures VALUES (" + Integer.toString(user.getInt("id")) + ", " +
-                                                "'" + (user.has("photo_200") ? user.getString("photo_200") : "no_photo") + "');");
+                                                "'" + (user.has("photo_200") ? user.getString("photo_200") : Strings.no_photo) + "');");
                                 }
                             } catch (JSONException ex) {
                                 ex.printStackTrace();
@@ -148,5 +134,19 @@ public class DbHelper extends SQLiteOpenHelper {
                 context.onResult(null);
             }
         });
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase data) {
+        Log.d(LOG_TAG, "oncreate");
+        data.execSQL("CREATE TABLE IF NOT EXISTS " + Strings.dialogs +        " (dialog_id INTEGER PRIMARY KEY, type TEXT);");
+        data.execSQL("CREATE TABLE IF NOT EXISTS " + Strings.last_message_id +" (dialog_id INTEGER PRIMARY KEY, message_id INT);");
+        data.execSQL("CREATE TABLE IF NOT EXISTS " + Strings.names +          " (dialog_id INTEGER PRIMARY KEY, name TEXT);");
+        data.execSQL("CREATE TABLE IF NOT EXISTS " + Strings.pictures +       " (dialog_id INTEGER PRIMARY KEY, link TEXT);");
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase sqLiteDatabase, int i, int i1) {
+        //pass TODO maybe, or don't give a fuck about this
     }
 }
