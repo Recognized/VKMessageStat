@@ -10,9 +10,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 
-/**
- * Created by vlad9 on 20.07.2017.
- */
 public class Easies {
     public enum DIALOG_TYPE {USER, CHAT, COMMUNITY}
     private static final String LOG_TAG = "Utils.Easies";
