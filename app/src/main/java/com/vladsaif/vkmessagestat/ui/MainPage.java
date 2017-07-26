@@ -17,6 +17,7 @@ import com.vladsaif.vkmessagestat.adapters.DialogsAdapter;
 import com.vladsaif.vkmessagestat.db.DbHelper;
 import com.vladsaif.vkmessagestat.utils.SetImage;
 import com.vladsaif.vkmessagestat.utils.Easies;
+import com.vladsaif.vkmessagestat.utils.Strings;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -29,7 +30,6 @@ public class MainPage extends AppCompatActivity implements VKCallback<Void> {
     private RecyclerView mRecyclerView;
     private LinearLayoutManager mLayoutManager;
     private DbHelper dbHelper;
-    Handler mHandler;
     public int responses;
     private final String LOG_TAG = "myTag";
 
@@ -40,17 +40,17 @@ public class MainPage extends AppCompatActivity implements VKCallback<Void> {
         // I don't really know how to check how much memory is available
         // so there is no other way for me except forgetting about this problem
         responses = 0;
-        SharedPreferences sPref = getSharedPreferences(Easies.settings, MODE_PRIVATE);
-        if (!sPref.contains(Easies.external_storage)) {
+        SharedPreferences sPref = getSharedPreferences(Strings.settings, MODE_PRIVATE);
+        if (!sPref.contains(Strings.external_storage)) {
             SharedPreferences.Editor edit = sPref.edit();
             try {
                 File test = new File(getExternalFilesDir(null), "test");
                 OutputStream os = new FileOutputStream(test);
                 Log.d(LOG_TAG, "using external storage");
-                edit.putBoolean(Easies.external_storage, true);
+                edit.putBoolean(Strings.external_storage, true);
             } catch (IOException ex) {
                 Log.d(LOG_TAG, "using internal storage");
-                edit.putBoolean(Easies.external_storage, false);
+                edit.putBoolean(Strings.external_storage, false);
             }
             edit.apply();
         }
@@ -63,14 +63,13 @@ public class MainPage extends AppCompatActivity implements VKCallback<Void> {
         Toolbar toolbar = (Toolbar) findViewById(R.id.my_toolbar);
         dbHelper = new DbHelper(getApplicationContext(), "dialogs.db");
         mRecyclerView = (RecyclerView) findViewById(R.id.dialogs);
-        mHandler = new Handler();
         DbHelper.getDialogs(dbHelper.db, this);
         mLayoutManager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(mLayoutManager);
         // TODO correct settings
         // setting common things
-        SharedPreferences sPref = getSharedPreferences(Easies.settings, MODE_PRIVATE);
-        STAT_MODE stat_mode = STAT_MODE.values()[(sPref.getInt("stat_mode", 0))];
+        SharedPreferences sPref = getSharedPreferences(Strings.settings, MODE_PRIVATE);
+        STAT_MODE stat_mode = STAT_MODE.values()[(sPref.getInt(Strings.stat_mode, 0))];
         switch (stat_mode) {
             case SIMPLE:
                 toolbar.setTitle(R.string.simple_stat);
@@ -79,22 +78,17 @@ public class MainPage extends AppCompatActivity implements VKCallback<Void> {
                 toolbar.setTitle(R.string.advanced_stat);
         }
         setSupportActionBar(toolbar);
-        token = VKAccessToken.tokenFromSharedPreferences(getApplication(), "access_token");
+        token = VKAccessToken.tokenFromSharedPreferences(getApplication(), Strings.access_token);
     }
 
     @Override
     public void onResult(Void nothing) {
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                Log.d("mytag", "callback response");
-                responses--;
-                if(responses == 0){
-                    Log.d("mytag", "adapter set");
-                    mRecyclerView.setAdapter(new DialogsAdapter(dbHelper, getApplicationContext(), new SetImage()));
-                }
-            }
-        });
+        Log.d(LOG_TAG, "callback response");
+        responses--;
+        if (responses == 0) {
+            Log.d(LOG_TAG, "adapter has been set");
+            mRecyclerView.setAdapter(new DialogsAdapter(dbHelper, getApplicationContext(), new SetImage()));
+        }
     }
 
     @Override

@@ -27,6 +27,12 @@
                 android:name=".ui.MainPage"
                 android:label="@string/title_activity_main_page">
         </activity>
+
+        <service
+                android:name=".services.MessagesCollector"
+                android:enabled="true"
+                android:exported="true">
+        </service>
     </application>
 
 </manifest>

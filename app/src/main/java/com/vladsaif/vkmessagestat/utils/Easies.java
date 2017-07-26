@@ -77,11 +77,11 @@ public class Easies {
     }
 
     public static String getPhotosPath(Context context) {
-        return getAppAbsolutePath(context) + Strings.photos_dir + File.separator;
+        return getAppAbsolutePath(context) + Strings.photos + File.separator;
     }
 
     public static String getDatabasesPath(Context context) {
-        return getAppAbsolutePath(context) + Strings.databases_dir + File.separator;
+        return getAppAbsolutePath(context) + Strings.databases + File.separator;
     }
 
     public static DIALOG_TYPE resolveType(String s) {
@@ -93,7 +93,7 @@ public class Easies {
     }
 
     public static void savePic(Bitmap pic, String filename, Context context) {
-        String dbfile = getAppAbsolutePath(context) + Strings.photos_dir + File.separator;
+        String dbfile = getAppAbsolutePath(context) + Strings.photos + File.separator;
         File folder = new File(dbfile);
         folder.mkdirs();
         FileOutputStream out = null;

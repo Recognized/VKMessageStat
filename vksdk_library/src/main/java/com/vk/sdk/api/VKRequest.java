@@ -28,11 +28,7 @@ import android.os.Looper;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
-import com.vk.sdk.VKAccessToken;
-import com.vk.sdk.VKObject;
-import com.vk.sdk.VKSdk;
-import com.vk.sdk.VKServiceActivity;
-import com.vk.sdk.VKUIHelper;
+import com.vk.sdk.*;
 import com.vk.sdk.api.httpClient.VKAbstractOperation;
 import com.vk.sdk.api.httpClient.VKHttpClient;
 import com.vk.sdk.api.httpClient.VKHttpOperation;
@@ -628,9 +624,9 @@ public class VKRequest extends VKObject {
     public static abstract class VKRequestListener {
         //--------------------------------------------
         // fork start
-        private Handler.Callback callback;
+        private VKCallback<Void> callback;
 
-        public VKRequestListener(Handler.Callback callback) {
+        public VKRequestListener(VKCallback<Void> callback) {
             this.callback = callback;
         }
         // fork end

@@ -10,10 +10,13 @@ import android.widget.Button;
 import android.widget.TextView;
 import com.vk.sdk.VKAccessToken;
 import com.vk.sdk.VKCallback;
+import com.vk.sdk.VKScope;
 import com.vk.sdk.VKSdk;
+import com.vk.sdk.api.VKApiConst;
 import com.vk.sdk.api.VKError;
 import com.vladsaif.vkmessagestat.R;
 import com.vladsaif.vkmessagestat.ui.MainPage;
+import com.vladsaif.vkmessagestat.utils.Strings;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -23,9 +26,8 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        VKAccessToken token = VKAccessToken.tokenFromSharedPreferences(getApplication(), "access_token");
+        VKAccessToken token = VKAccessToken.tokenFromSharedPreferences(getApplication(), Strings.access_token);
         if (token != null) {
-            // TODO dunno whether it's good to start new activity here and will this activity be created or not
             startActivity(new Intent(this, MainPage.class));
         }
     }
@@ -40,7 +42,7 @@ public class LoginActivity extends AppCompatActivity {
         login.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                VKSdk.login(running, "messages", "offline");
+                VKSdk.login(running, VKScope.MESSAGES, VKScope.OFFLINE);
             }
         });
 
@@ -53,7 +55,7 @@ public class LoginActivity extends AppCompatActivity {
         if (!VKSdk.onActivityResult(requestCode, resultCode, data, new VKCallback<VKAccessToken>() {
             @Override
             public void onResult(VKAccessToken res) {
-                res.saveTokenToSharedPreferences(getApplication(), getString(R.string.token));
+                res.saveTokenToSharedPreferences(getApplication(), Strings.access_token);
                 startActivity(new Intent(getApplicationContext(), MainPage.class));
             }
             @Override

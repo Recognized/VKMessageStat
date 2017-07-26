@@ -13,8 +13,15 @@ public class Strings {
             last_message_id = "last_message_id",
             name = "name",
             link = "link",
-            photos_dir = "photos",
-            databases_dir = "databases",
+            photos = "photos",
+            databases = "databases",
             chat = "chat",
-            user = "user";
+            user = "user",
+            stat_mode = "stat_mode",
+            access_token = "access_token",
+            peer_id = "peer_id",
+            start_message_id = "start_message_id",
+            type = "type",
+            community = "community",
+            no_photo = "no_photo";
 }
