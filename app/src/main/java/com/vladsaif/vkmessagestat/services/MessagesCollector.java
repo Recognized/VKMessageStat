@@ -68,10 +68,46 @@ public class MessagesCollector extends Service {
         private int peer_id;
         private int start_message_id;
         private String tableName;
+        private ResponseWork worker = new ResponseWork() {
+            @Override
+            public int doWork(VKResponse response) {
+                try {
+                    JSONArray messages = response.json.getJSONArray("result");
+                    int skipped = response.json.getJSONArray("result").getJSONObject(0).getInt("skipped");
+                    db.beginTransaction();
+                    for (int i = 0; i < messages.length(); ++i) {
+                        JSONArray msg = messages.getJSONObject(i).getJSONArray("items");
+                        for (int j = 0; j < msg.length(); ++j) {
+                            JSONObject js = msg.getJSONObject(j);
+                            ContentValues cv = new ContentValues();
+                            cv.put(Strings.message_id, js.getInt(Strings.id));
+                            cv.put(Strings.body, js.getString(Strings.body));
+                            cv.put(Strings.date, js.getInt(Strings.date));
+                            db.insertWithOnConflict(tableName, null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+                        }
+                    }
+                    db.endTransaction();
+                    // TODO add progress bar
+                    // TODO add func to get last_message_id;
+                    return  skipped == 0 ? -1 : response.json.getInt("new_start");
+                } catch (JSONException ex) {
+                    Log.e(LOG_TAG, ex.toString());
+                    return -1;
+                }
+            }
+        };
+
+        private DumpCallback dumpCallback = new DumpCallback() {
+            @Override
+            public void onComplete(int new_start_message_id) {
+                if (new_start_message_id < 0) // todo end recursion;
+                    getMessages(new_start_message_id);
+            }
+        };
 
         public DumpMessagePack(int peer_id, int start_message_id) {
             this.tableName = Strings.prefix_messages + Integer.toString(peer_id);
-            db.execSQL("CREATE TABLE IF NOT EXISTS "  + tableName +
+            db.execSQL("CREATE TABLE IF NOT EXISTS " + tableName +
                     " (message_id INTEGER PRIMARY KEY ON CONFLICT REPLACE, body TEXT, date INT);");
             this.peer_id = peer_id;
             this.start_message_id = start_message_id;
@@ -83,75 +119,37 @@ public class MessagesCollector extends Service {
         }
 
         void getMessages(int start_message_id) {
-            new CountedRequest("execute.getMessages", VKParameters.from(Strings.access_token, access_token,
+            CountedRequest("execute.getMessages", VKParameters.from(Strings.access_token, access_token,
                     Strings.peer_id, Integer.toString(peer_id), Strings.start_message_id,
-                    Integer.toString(start_message_id)), new ResponseWork() {
-                @Override
-                public int doWork(VKResponse response) {
-                    try {
-                        JSONArray messages = response.json.getJSONArray("result");
-                        int skipped = response.json.getJSONArray("result").getJSONObject(0).getInt("skipped");
-                        db.beginTransaction();
-                        for (int i = 0; i < messages.length(); ++i) {
-                            JSONArray msg = messages.getJSONObject(i).getJSONArray("items");
-                            for (int j = 0; j < msg.length(); ++j) {
-                                JSONObject js = msg.getJSONObject(j);
-                                ContentValues cv = new ContentValues();
-                                cv.put(Strings.message_id, js.getInt(Strings.id));
-                                cv.put(Strings.body, js.getString(Strings.body));
-                                cv.put(Strings.date, js.getInt(Strings.date));
-                                db.insertWithOnConflict(tableName, null, cv, SQLiteDatabase.CONFLICT_REPLACE);
-                            }
-                        }
-                        db.endTransaction();
-                        // TODO add progress bar
-                        // TODO add func to get last_message_id;
-                        return response.json.getInt("new_start");
-                    } catch (JSONException ex) {
-                        Log.e(LOG_TAG, ex.toString());
-                        return -1;
+                    Integer.toString(start_message_id)), worker, dumpCallback);
+        }
+    }
+
+    private void CountedRequest(final String method, final VKParameters param,
+                                final ResponseWork work, final DumpCallback callback) {
+        requests++;
+        if (prev_request == 0) {
+            prev_request = new Date().getTime();
+        }
+        long delay = Math.max(0, fixedDelayMs - (new Date().getTime() - prev_request));
+        Runnable task = new Runnable() {
+            @Override
+            public void run() {
+                VKRequest req = new VKRequest(method, param);
+                req.executeWithListener(new VKRequest.VKRequestListener() {
+                    @Override
+                    public void onComplete(VKResponse response) {
+                        super.onComplete(response);
+                        callback.onComplete(work.doWork(response));
+                        requests--;
                     }
-                }
-            }, new DumpCallback() {
-                @Override
-                public void onComplete(int new_start_message_id) {
-                    if (new_start_message_id < 0) // todo end recursion;
-                    getMessages(new_start_message_id);
-                }
-            });
+                });
+            }
+        };
+        if (delay == 0) {
+            mainHandler.post(task);
+        } else {
+            mainHandler.postDelayed(task, delay);
         }
     }
-
-    public final class CountedRequest {
-
-        public CountedRequest(final String method, final VKParameters param,
-                              final ResponseWork work, final DumpCallback callback) {
-            requests++;
-            if (prev_request == 0) {
-                prev_request = new Date().getTime();
-            }
-            long delay = Math.max(0, fixedDelayMs - (new Date().getTime() - prev_request));
-            Runnable task = new Runnable() {
-                @Override
-                public void run() {
-                    VKRequest req = new VKRequest(method, param);
-                    req.executeWithListener(new VKRequest.VKRequestListener() {
-                        @Override
-                        public void onComplete(VKResponse response) {
-                            super.onComplete(response);
-                            callback.onComplete(work.doWork(response));
-                            requests--;
-                        }
-                    });
-                }
-            };
-            if (delay == 0) {
-                mainHandler.post(task);
-            } else {
-                mainHandler.postDelayed(task, delay);
-            }
-        }
-    }
-
-
 }
