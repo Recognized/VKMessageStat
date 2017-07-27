@@ -30,5 +30,6 @@ public class Strings {
             date = "date",
             message_id = "message_id",
             names = "names",
-            pictures = "pictures";
+            pictures = "pictures",
+            rev = "rev";
 }

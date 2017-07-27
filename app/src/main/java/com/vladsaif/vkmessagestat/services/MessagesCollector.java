@@ -4,6 +4,7 @@ import android.app.Service;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.*;
 import android.util.Log;
@@ -25,10 +26,10 @@ import java.util.Date;
 import static android.webkit.ConsoleMessage.MessageLevel.LOG;
 
 public class MessagesCollector extends Service {
-    static final int fixedDelayMs = 1000;
+    private static final int fixedDelayMs = 1000;
     private static final String LOG_TAG = "MyService";
-    static int requests = 0;
-    static long prev_request = 0;
+    private static int requests = 0;
+    private static long prev_request = 0;
     private final DbHelper dbHelper;
     private final SQLiteDatabase db;
     private Handler mainHandler;
@@ -38,7 +39,6 @@ public class MessagesCollector extends Service {
         dbHelper = new DbHelper(getApplicationContext(), Strings.dialogs);
         db = dbHelper.getWritableDatabase();
     }
-
 
     @Override
     public void onCreate() {
@@ -72,8 +72,9 @@ public class MessagesCollector extends Service {
             @Override
             public int doWork(VKResponse response) {
                 try {
-                    JSONArray messages = response.json.getJSONArray("result");
-                    int skipped = response.json.getJSONArray("result").getJSONObject(0).getInt("skipped");
+                    JSONObject res = response.json.getJSONObject("response");
+                    JSONArray messages = res.getJSONArray("result");
+                    int skipped = res.getJSONArray("result").getJSONObject(0).getInt("skipped");
                     db.beginTransaction();
                     for (int i = 0; i < messages.length(); ++i) {
                         JSONArray msg = messages.getJSONObject(i).getJSONArray("items");
@@ -125,6 +126,51 @@ public class MessagesCollector extends Service {
         }
     }
 
+    public final class LastMessageId implements Runnable {
+        private int peer_id;
+        private DumpCallback callback;
+        private ResponseWork resolveId = new ResponseWork() {
+            @Override
+            public int doWork(VKResponse response) {
+                try {
+                    return response.json.getJSONObject("response")
+                            .getJSONArray("items")
+                            .getJSONObject(0)
+                            .getInt(Strings.id);
+                } catch (JSONException ex) {
+                    Log.e(LOG_TAG, ex.toString());
+                    return -1;
+                }
+            }
+        };
+        private DumpCallback dumpCallback = new DumpCallback() {
+            @Override
+            public void onComplete(int last_message_id) {
+                ContentValues cv = new ContentValues();
+                cv.put(Strings.last_message_id, last_message_id);
+                cv.put(Strings.dialog_id, peer_id);
+                db.insertWithOnConflict(Strings.last_message_id, null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+                callback.onComplete(last_message_id);
+            }
+        };
+
+        public LastMessageId(int peer_id, DumpCallback callback) {
+            this.peer_id = peer_id;
+            this.callback = callback;
+        }
+        @Override
+        public void run() {
+            Cursor cursor = db.rawQuery("SELECT " + Strings.message_id + " FROM " + Strings.last_message_id +
+                    " WHERE " + Strings.dialog_id  + "=" + Integer.toString(peer_id), new String[]{});
+            if (cursor.moveToFirst()) {
+                callback.onComplete(cursor.getInt(cursor.getColumnIndex(Strings.last_message_id)));
+            } else {
+                CountedRequest("messages.getHistory", VKParameters.from(Strings.peer_id, Integer.toString(peer_id),
+                        Strings.rev, "1"), resolveId, dumpCallback);
+            }
+        }
+    }
+
     private void CountedRequest(final String method, final VKParameters param,
                                 final ResponseWork work, final DumpCallback callback) {
         requests++;
@@ -151,5 +197,18 @@ public class MessagesCollector extends Service {
         } else {
             mainHandler.postDelayed(task, delay);
         }
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        String commandType = intent.getStringExtra(Strings.commandType);
+        switch (commandType) {
+            case commandDump: break;
+            // TODO
+        }
+    }
+
+    private void collectAllMessages() {
+        
     }
 }
