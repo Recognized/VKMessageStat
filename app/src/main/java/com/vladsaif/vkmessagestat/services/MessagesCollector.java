@@ -247,7 +247,7 @@ public class MessagesCollector extends Service {
                             cursor.close();
                         }
                     }
-                }));;
+                }));
             }
         }
         ));
