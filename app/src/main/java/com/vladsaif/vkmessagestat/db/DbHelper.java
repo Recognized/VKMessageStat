@@ -108,8 +108,6 @@ public class DbHelper extends SQLiteOpenHelper {
                         @Override
                         public void onComplete(VKResponse response) {
                             super.onComplete(response);
-                            // todo I just have copied this
-                            // I don't really know what vk.com is doing with array response
                             try {
                                 JSONArray array = response.json.getJSONObject("response").getJSONArray("items");
                                 for (int i = 0; i < array.length(); ++i) {

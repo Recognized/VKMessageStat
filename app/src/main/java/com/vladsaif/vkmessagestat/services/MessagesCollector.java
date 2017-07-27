@@ -68,6 +68,7 @@ public class MessagesCollector extends Service {
         private int peer_id;
         private int start_message_id;
         private String tableName;
+        private DumpCallback finishCallback;
         private ResponseWork worker = new ResponseWork() {
             @Override
             public int doWork(VKResponse response) {
@@ -101,17 +102,19 @@ public class MessagesCollector extends Service {
         private DumpCallback dumpCallback = new DumpCallback() {
             @Override
             public void onComplete(int new_start_message_id) {
-                if (new_start_message_id < 0) // todo end recursion;
+                if (new_start_message_id < 0) finishCallback.onComplete(-1);
                     getMessages(new_start_message_id);
             }
         };
 
-        public DumpMessagePack(int peer_id, int start_message_id) {
+
+        public DumpMessagePack(int peer_id, int start_message_id, DumpCallback finishCallback) {
             this.tableName = Strings.prefix_messages + Integer.toString(peer_id);
             db.execSQL("CREATE TABLE IF NOT EXISTS " + tableName +
                     " (message_id INTEGER PRIMARY KEY ON CONFLICT REPLACE, body TEXT, date INT);");
             this.peer_id = peer_id;
             this.start_message_id = start_message_id;
+            this.finishCallback = finishCallback;
         }
 
         @Override
@@ -163,8 +166,11 @@ public class MessagesCollector extends Service {
             Cursor cursor = db.rawQuery("SELECT " + Strings.message_id + " FROM " + Strings.last_message_id +
                     " WHERE " + Strings.dialog_id  + "=" + Integer.toString(peer_id), new String[]{});
             if (cursor.moveToFirst()) {
-                callback.onComplete(cursor.getInt(cursor.getColumnIndex(Strings.last_message_id)));
+                int anInt = cursor.getInt(cursor.getColumnIndex(Strings.last_message_id));
+                cursor.close();
+                callback.onComplete(anInt);
             } else {
+                cursor.close();
                 CountedRequest("messages.getHistory", VKParameters.from(Strings.peer_id, Integer.toString(peer_id),
                         Strings.rev, "1"), resolveId, dumpCallback);
             }
@@ -203,12 +209,48 @@ public class MessagesCollector extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         String commandType = intent.getStringExtra(Strings.commandType);
         switch (commandType) {
-            case commandDump: break;
+            case Strings.commandDump:
+                mainHandler.post(collectAllMessages);
+                break;
             // TODO
         }
+        return START_NOT_STICKY;
     }
 
-    private void collectAllMessages() {
-        
+    private Runnable collectAllMessages = new Runnable() {
+        @Override
+        public void run() {
+            final Cursor cursor = db.rawQuery("SELECT " + Strings.dialog_id + " FROM " + Strings.dialogs, new String[]{});
+            final int peerIndex = cursor.getColumnIndex(Strings.dialog_id);
+            if(cursor.moveToFirst()) {
+                mainHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        final int peer_id = cursor.getInt(peerIndex);
+                        LoopAndCollect(peer_id, peerIndex, cursor);
+                    }
+                });
+            }
+        }
+    };
+
+    private void LoopAndCollect(final int peer_id, final int columnIndex, final Cursor cursor) {
+        mainHandler.post(new LastMessageId(peer_id, new DumpCallback() {
+            @Override
+            public void onComplete(int start_message_id) {
+                mainHandler.post(new DumpMessagePack(peer_id, start_message_id, new DumpCallback() {
+                    @Override
+                    public void onComplete(int not_used) {
+                        if(cursor.moveToNext()) {
+                            LoopAndCollect(cursor.getInt(columnIndex), columnIndex, cursor);
+                        } else {
+                            cursor.close();
+                        }
+                    }
+                }));;
+            }
+        }
+        ));
     }
+
 }

@@ -31,5 +31,7 @@ public class Strings {
             message_id = "message_id",
             names = "names",
             pictures = "pictures",
-            rev = "rev";
+            rev = "rev",
+            commandType = "commandType",
+            commandDump = "commandDump";
 }
