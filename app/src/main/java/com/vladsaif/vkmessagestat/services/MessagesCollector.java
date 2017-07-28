@@ -1,12 +1,16 @@
 package com.vladsaif.vkmessagestat.services;
 
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.Service;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.*;
+import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 import com.vk.sdk.VKAccessToken;
 import com.vk.sdk.VKCallback;
@@ -14,6 +18,7 @@ import com.vk.sdk.api.VKError;
 import com.vk.sdk.api.VKParameters;
 import com.vk.sdk.api.VKRequest;
 import com.vk.sdk.api.VKResponse;
+import com.vladsaif.vkmessagestat.R;
 import com.vladsaif.vkmessagestat.db.DbHelper;
 import com.vladsaif.vkmessagestat.utils.Strings;
 import org.json.JSONArray;
@@ -34,6 +39,8 @@ public class MessagesCollector extends Service {
     private final SQLiteDatabase db;
     private Handler mainHandler;
     private String access_token;
+    private NotificationManager mNotifyManager;
+    private NotificationCompat.Builder mBuilder;
 
     public MessagesCollector() {
         dbHelper = new DbHelper(getApplicationContext(), Strings.dialogs);
@@ -89,8 +96,6 @@ public class MessagesCollector extends Service {
                         }
                     }
                     db.endTransaction();
-                    // TODO add progress bar
-                    // TODO add func to get last_message_id;
                     return  skipped == 0 ? -1 : response.json.getInt("new_start");
                 } catch (JSONException ex) {
                     Log.e(LOG_TAG, ex.toString());
@@ -251,6 +256,13 @@ public class MessagesCollector extends Service {
             }
         }
         ));
+    }
+
+    private void sendNotification() {
+        mNotifyManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        mBuilder = new NotificationCompat.Builder(this);
+        mBuilder.setContentTitle(getString(R.string.downloadTitle))
+                .setContentText(getString(R.string.downloadText))
     }
 
 }
