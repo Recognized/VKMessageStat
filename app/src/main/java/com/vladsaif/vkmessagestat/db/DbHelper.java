@@ -5,6 +5,7 @@ import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
+import android.util.SparseIntArray;
 import com.vk.sdk.api.VKParameters;
 import com.vk.sdk.api.VKRequest;
 import com.vk.sdk.api.VKResponse;
@@ -39,6 +40,7 @@ public class DbHelper extends SQLiteOpenHelper {
                 super.onComplete(response);
                 VKRequest users, groups;
                 final ArrayList<Integer> user_ids = new ArrayList<>(), group_ids = new ArrayList<>();
+                final SparseIntArray time = new SparseIntArray();
                 try {
                     Log.d(LOG_TAG, db.getPath());
                     Log.d(LOG_TAG, response.responseString);
@@ -50,11 +52,13 @@ public class DbHelper extends SQLiteOpenHelper {
                         Log.d(LOG_TAG, Integer.toString(user_id));
                         Easies.DIALOG_TYPE type = Easies.resolveTypeBySomeShitThankYouVK(user_id, chat_id);
                         int dialog_id = Easies.getDialogID(type, user_id, chat_id);
+                        time.put(dialog_id, message.getInt("date"));
                         switch (type) {
                             case CHAT:
                                 ContentValues val = new ContentValues();
                                 val.put(Strings.dialog_id, dialog_id);
-                                val.put("type", "chat");
+                                val.put(Strings.type, Strings.chat);
+                                val.put(Strings.date, time.get(dialog_id));
                                 db.insertWithOnConflict(Strings.dialogs, null, val, SQLiteDatabase.CONFLICT_REPLACE);
                                 db.execSQL("INSERT OR REPLACE INTO names VALUES (" + Integer.toString(dialog_id) + ", " +
                                         "'" + message.getString("title") + "');");
@@ -85,8 +89,9 @@ public class DbHelper extends SQLiteOpenHelper {
                                 for (int i = 0; i < users.length(); ++i) {
                                     ContentValues val = new ContentValues();
                                     JSONObject user = users.getJSONObject(i);
-                                    val.put(Strings.dialog_id, user.getInt("id"));
-                                    val.put("type", "user");
+                                    val.put(Strings.dialog_id, user.getInt(Strings.id));
+                                    val.put(Strings.type, Strings.user);
+                                    val.put(Strings.date, time.get(user.getInt(Strings.id)));
                                     db.insertWithOnConflict(Strings.dialogs, null, val, SQLiteDatabase.CONFLICT_REPLACE);
                                     db.execSQL("INSERT OR REPLACE INTO names VALUES (" + Integer.toString(user.getInt("id")) + ", " +
                                             "'" + user.getString("first_name") + " " + user.getString("last_name") + "');");
@@ -116,6 +121,7 @@ public class DbHelper extends SQLiteOpenHelper {
                                     int id = -jj.getInt("id");
                                     val.put(Strings.dialog_id, id);
                                     val.put(Strings.type, Strings.community);
+                                    val.put(Strings.date, time.get(id));
                                     db.insertWithOnConflict(Strings.dialogs, null, val, SQLiteDatabase.CONFLICT_REPLACE);
                                     db.execSQL("INSERT OR REPLACE INTO names VALUES (" + Integer.toString(id) + ", " +
                                             "'" + array.getJSONObject(i).getString("name") + "');");
@@ -137,7 +143,7 @@ public class DbHelper extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase data) {
         Log.d(LOG_TAG, "oncreate");
-        data.execSQL("CREATE TABLE IF NOT EXISTS " + Strings.dialogs +        " (dialog_id INTEGER PRIMARY KEY, type TEXT);");
+        data.execSQL("CREATE TABLE IF NOT EXISTS " + Strings.dialogs +        " (dialog_id INTEGER PRIMARY KEY, type TEXT, date INT);");
         data.execSQL("CREATE TABLE IF NOT EXISTS " + Strings.last_message_id +" (dialog_id INTEGER PRIMARY KEY, message_id INT);");
         data.execSQL("CREATE TABLE IF NOT EXISTS " + Strings.names +          " (dialog_id INTEGER PRIMARY KEY, name TEXT);");
         data.execSQL("CREATE TABLE IF NOT EXISTS " + Strings.pictures +       " (dialog_id INTEGER PRIMARY KEY, link TEXT);");

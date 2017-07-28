@@ -33,5 +33,7 @@ public class Strings {
             pictures = "pictures",
             rev = "rev",
             commandType = "commandType",
-            commandDump = "commandDump";
+            commandDump = "commandDump",
+            counts = "counts",
+            counter = "counter";
 }

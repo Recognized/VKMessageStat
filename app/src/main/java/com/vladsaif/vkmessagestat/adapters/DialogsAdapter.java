@@ -40,7 +40,7 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
         db = helper.getWritableDatabase();
         // Copy-paste because I can't have functional interface
         Log.d("db", db.getPath());
-        Cursor dialogs = db.rawQuery("SELECT dialog_id, type FROM dialogs;", new String[]{});
+        Cursor dialogs = db.rawQuery("SELECT dialog_id, type, date FROM dialogs ORDER BY date DESC;", new String[]{});
         Log.d(here, "count " + Integer.toString(dialogs.getCount()));
         if (dialogs.getCount() > 0) {
             dialogs.moveToFirst();

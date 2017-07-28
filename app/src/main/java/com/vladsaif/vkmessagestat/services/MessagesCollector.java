@@ -13,6 +13,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.os.*;
 import android.support.v7.app.NotificationCompat;
 import android.util.Log;
+import android.util.SparseIntArray;
 import com.vk.sdk.VKAccessToken;
 import com.vk.sdk.VKCallback;
 import com.vk.sdk.api.VKError;
@@ -26,8 +27,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.Calendar;
-import java.util.Date;
+import java.util.*;
 
 import static android.webkit.ConsoleMessage.MessageLevel.LOG;
 
@@ -39,12 +39,15 @@ public class MessagesCollector extends Service {
     private final DbHelper dbHelper;
     private final SQLiteDatabase db;
     private final int NOTIFICATION_ID = 42;
-    private final int packSize = 3980;
+    private final int packSize = 25 * 199;
     private Handler mainHandler;
     private String access_token;
     private NotificationManager mNotifyManager;
     private NotificationCompat.Builder mBuilder;
     private int progress;
+    private int allMessages;
+    private SparseIntArray existingMessages;
+    private SparseIntArray lackOfMessages;
 
     public MessagesCollector() {
         dbHelper = new DbHelper(getApplicationContext(), Strings.dialogs);
@@ -101,8 +104,9 @@ public class MessagesCollector extends Service {
                         }
                     }
                     db.endTransaction();
-                    progress += packSize;
-                    return  skipped == 0 ? -1 : response.json.getInt("new_start");
+                    progress += Math.min(packSize, lackOfMessages.get(peer_id)-existingMessages.get(peer_id));
+                    mNotifyManager.notify(NOTIFICATION_ID, mBuilder.setProgress(allMessages, progress, false).build());
+                    return skipped == 0 ? -1 : response.json.getInt("new_start");
                 } catch (JSONException ex) {
                     Log.e(LOG_TAG, ex.toString());
                     return -1;
@@ -114,7 +118,7 @@ public class MessagesCollector extends Service {
             @Override
             public void onComplete(int new_start_message_id) {
                 if (new_start_message_id < 0) finishCallback.onComplete(-1);
-                    getMessages(new_start_message_id);
+                getMessages(new_start_message_id);
             }
         };
 
@@ -172,10 +176,11 @@ public class MessagesCollector extends Service {
             this.peer_id = peer_id;
             this.callback = callback;
         }
+
         @Override
         public void run() {
             Cursor cursor = db.rawQuery("SELECT " + Strings.message_id + " FROM " + Strings.last_message_id +
-                    " WHERE " + Strings.dialog_id  + "=" + Integer.toString(peer_id), new String[]{});
+                    " WHERE " + Strings.dialog_id + "=" + Integer.toString(peer_id), new String[]{});
             if (cursor.moveToFirst()) {
                 int anInt = cursor.getInt(cursor.getColumnIndex(Strings.last_message_id));
                 cursor.close();
@@ -222,9 +227,13 @@ public class MessagesCollector extends Service {
         switch (commandType) {
             case Strings.commandDump:
                 mNotifyManager.notify(NOTIFICATION_ID, mBuilder.setProgress(0, 0, true).build());
-                estimateDownload();
+                mainHandler.post(new EstimateDownload(new DumpCallback() {
+                    @Override
+                    public void onComplete(int new_start_message_id) {
+                        mainHandler.post(collectAllMessages);
+                    }
+                }));
                 progress = 0;
-                mainHandler.post(collectAllMessages);
                 break;
             // TODO
         }
@@ -234,9 +243,11 @@ public class MessagesCollector extends Service {
     private Runnable collectAllMessages = new Runnable() {
         @Override
         public void run() {
-            final Cursor cursor = db.rawQuery("SELECT " + Strings.dialog_id + " FROM " + Strings.dialogs + ";", new String[]{});
+            final Cursor cursor = db.rawQuery("SELECT " + Strings.dialog_id +
+                    " FROM " + Strings.dialogs +
+                    " ORDER BY date DESC;", new String[]{});
             final int peerIndex = cursor.getColumnIndex(Strings.dialog_id);
-            if(cursor.moveToFirst()) {
+            if (cursor.moveToFirst()) {
                 mainHandler.post(new Runnable() {
                     @Override
                     public void run() {
@@ -255,7 +266,7 @@ public class MessagesCollector extends Service {
                 mainHandler.post(new DumpMessagePack(peer_id, start_message_id, new DumpCallback() {
                     @Override
                     public void onComplete(int not_used) {
-                        if(cursor.moveToNext()) {
+                        if (cursor.moveToNext()) {
                             LoopAndCollect(cursor.getInt(columnIndex), columnIndex, cursor);
                         } else {
                             cursor.close();
@@ -279,50 +290,118 @@ public class MessagesCollector extends Service {
                 .setContentIntent(intent);
     }
 
-    private void estimateDownload() {
-        var arg1 = parseInt(Args.arg1);
-        var arg2 = parseInt(Args.arg2);
-        var arg3 = parseInt(Args.arg3);
-        var arg4 = parseInt(Args.arg4);
-        var arg5 = parseInt(Args.arg5);
-        var arg6 = parseInt(Args.arg6);
-        var arg7 = parseInt(Args.arg7);
-        var arg8 = parseInt(Args.arg8);
-        var arg9 = parseInt(Args.arg9);
-        var arg10 =parseInt(Args.arg10);
-        var arg11 =parseInt(Args.arg11);
-        var arg12 =parseInt(Args.arg12);
-        var arg13 =parseInt(Args.arg13);
-        var arg14 =parseInt(Args.arg14);
-        var arg15 =parseInt(Args.arg15);
-        var arg16 =parseInt(Args.arg16);
-        var arg17 =parseInt(Args.arg17);
-        var arg18 =parseInt(Args.arg18);
-        var arg19 =parseInt(Args.arg19);
-        var arg20 =parseInt(Args.arg20);
+    private final class EstimateDownload implements Runnable {
+        private final DumpCallback callback;
+        private ArrayList<Integer> peers;
+        private ResponseWork worker = new ResponseWork() {
+            @Override
+            public int doWork(VKResponse response) {
+                try {
+                    JSONArray array = response.json.getJSONArray("response");
+                    for (int i = 0; i < array.length(); ++i) {
+                        JSONObject obj = array.getJSONObject(i);
+                        int peer = obj.getInt("peer");
+                        int count = obj.getInt("count");
+                        ContentValues cv = new ContentValues();
+                        cv.put(Strings.dialog_id, peer);
+                        cv.put(Strings.counter, count);
+                        db.insertWithOnConflict(Strings.counts, null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+                        lackOfMessages.put(peer, count);
+                        allMessages += count - existingMessages.get(peer);
+                    }
+                    return 1;
+                } catch (JSONException ex) {
+                    Log.e(LOG_TAG, ex.toString());
+                    return -1;
+                }
+            }
+        };
 
-        if(arg1  = parseInt(Args.arg1);
-        if(arg2  = parseInt(Args.arg2);
-        if(arg3  = parseInt(Args.arg3);
-        if(arg4  = parseInt(Args.arg4);
-        if(arg5  = parseInt(Args.arg5);
-        if(arg6  = parseInt(Args.arg6);
-        if(arg7  = parseInt(Args.arg7);
-        if(arg8  = parseInt(Args.arg8);
-        if(arg9  = parseInt(Args.arg9);
-        if(arg10  =parseInt(Args.arg10);
-        if(arg11  =parseInt(Args.arg11);
-        if(arg12  =parseInt(Args.arg12);
-        if(arg13  =parseInt(Args.arg13);
-        if(arg14  =parseInt(Args.arg14);
-        if(arg15  =parseInt(Args.arg15);
-        if(arg16  =parseInt(Args.arg16);
-        if(arg17  =parseInt(Args.arg17);
-        if(arg18  =parseInt(Args.arg18);
-        if(arg19  =parseInt(Args.arg19);
-        if(arg20  =parseInt(Args.arg20);
+        public EstimateDownload(DumpCallback callback) {
+            this.callback = callback;
+            allMessages = 0;
+            peers = new ArrayList<>();
+            existingMessages = new SparseIntArray();
+            lackOfMessages = new SparseIntArray();
+            final Cursor cursor = db.rawQuery("SELECT " + Strings.dialog_id + " FROM " + Strings.dialogs + ";", new String[]{});
+            int dialog_id = cursor.getColumnIndex(Strings.dialog_id);
+            if (cursor.moveToFirst()) {
+                do {
+                    int peer = cursor.getInt(dialog_id);
+                    Cursor count = db.rawQuery("SELECT " + Strings.counter + " FROM " + Strings.counts +
+                            " WHERE " + Strings.dialog_id + "=" + Integer.toString(peer) + ";", new String[]{});
+                    if(count.moveToFirst()) {
+                        existingMessages.put(peer, count.getInt(count.getColumnIndex(Strings.counter)));
+                    } else {
+                        existingMessages.put(peer, 0);
+                        peers.add(peer);
+                    }
+                    count.close();
+                    // TODO remove this logging when you will be sure about this function
+                    Log.d(LOG_TAG, Integer.toString(cursor.getInt(dialog_id)));
+                } while (cursor.moveToNext());
+            }
+            cursor.close();
+        }
 
+        @Override
+        public void run() {
+            recurHelper(0);
+        }
 
+        public void recurHelper(final int index_start) {
+            if (index_start < 0) callback.onComplete(1);
+            CountedRequest("execute.getCount", peersToParam(peers, index_start), worker, new DumpCallback() {
+                @Override
+                public void onComplete(int new_start_message_id) {
+                    if (new_start_message_id < 0) throw new RuntimeException("Json exception");
+                    if (index_start + 25 < peers.size()) recurHelper(index_start + 25);
+                    else mNotifyManager.notify(NOTIFICATION_ID, 
+                            mBuilder.setProgress(allMessages, allMessages, false).build());
+                }
+            });
+        }
     }
+
+    private VKParameters peersToParam(ArrayList<Integer> peers, int index_start) {
+        // Achtung!! Extreme chance of making mistake, but it is Java and I can't do it better;
+        if (peers.size() == 0) return null;
+        String[] filteredPeers = new String[25];
+        for (int i = index_start; i < Math.min(peers.size(), index_start + 25); ++i) {
+            filteredPeers[i - index_start] = Integer.toString(peers.get(i));
+        }
+        for (int i = Math.min(index_start + 25, peers.size()); i < 25; ++i) {
+            filteredPeers[i - index_start] = "-1";
+        }
+        return VKParameters.from(
+                Strings.access_token, access_token,
+                "arg1", filteredPeers[0],
+                "arg2", filteredPeers[1],
+                "arg3", filteredPeers[2],
+                "arg4", filteredPeers[3],
+                "arg5", filteredPeers[4],
+                "arg6", filteredPeers[5],
+                "arg7", filteredPeers[6],
+                "arg8", filteredPeers[7],
+                "arg9", filteredPeers[8],
+                "arg10", filteredPeers[9],
+                "arg11", filteredPeers[10],
+                "arg12", filteredPeers[11],
+                "arg13", filteredPeers[12],
+                "arg14", filteredPeers[13],
+                "arg15", filteredPeers[14],
+                "arg16", filteredPeers[15],
+                "arg17", filteredPeers[16],
+                "arg18", filteredPeers[17],
+                "arg19", filteredPeers[18],
+                "arg20", filteredPeers[19],
+                "arg21", filteredPeers[20],
+                "arg22", filteredPeers[21],
+                "arg23", filteredPeers[22],
+                "arg24", filteredPeers[23],
+                "arg25", filteredPeers[24]
+        );
+    }
+
 
 }
