@@ -2,6 +2,7 @@ package com.vladsaif.vkmessagestat.services;
 
 import android.app.Notification;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.ContentValues;
 import android.content.Context;
@@ -37,10 +38,13 @@ public class MessagesCollector extends Service {
     private static long prev_request = 0;
     private final DbHelper dbHelper;
     private final SQLiteDatabase db;
+    private final int NOTIFICATION_ID = 42;
+    private final int packSize = 3980;
     private Handler mainHandler;
     private String access_token;
     private NotificationManager mNotifyManager;
     private NotificationCompat.Builder mBuilder;
+    private int progress;
 
     public MessagesCollector() {
         dbHelper = new DbHelper(getApplicationContext(), Strings.dialogs);
@@ -54,6 +58,7 @@ public class MessagesCollector extends Service {
         thread.start();
         mainHandler = new Handler(thread.getLooper());
         access_token = VKAccessToken.currentToken().accessToken;
+        sendNotification();
         Log.d(LOG_TAG, access_token);
     }
 
@@ -96,6 +101,7 @@ public class MessagesCollector extends Service {
                         }
                     }
                     db.endTransaction();
+                    progress += packSize;
                     return  skipped == 0 ? -1 : response.json.getInt("new_start");
                 } catch (JSONException ex) {
                     Log.e(LOG_TAG, ex.toString());
@@ -215,6 +221,9 @@ public class MessagesCollector extends Service {
         String commandType = intent.getStringExtra(Strings.commandType);
         switch (commandType) {
             case Strings.commandDump:
+                mNotifyManager.notify(NOTIFICATION_ID, mBuilder.setProgress(0, 0, true).build());
+                estimateDownload();
+                progress = 0;
                 mainHandler.post(collectAllMessages);
                 break;
             // TODO
@@ -225,7 +234,7 @@ public class MessagesCollector extends Service {
     private Runnable collectAllMessages = new Runnable() {
         @Override
         public void run() {
-            final Cursor cursor = db.rawQuery("SELECT " + Strings.dialog_id + " FROM " + Strings.dialogs, new String[]{});
+            final Cursor cursor = db.rawQuery("SELECT " + Strings.dialog_id + " FROM " + Strings.dialogs + ";", new String[]{});
             final int peerIndex = cursor.getColumnIndex(Strings.dialog_id);
             if(cursor.moveToFirst()) {
                 mainHandler.post(new Runnable() {
@@ -259,10 +268,61 @@ public class MessagesCollector extends Service {
     }
 
     private void sendNotification() {
+        Intent notificationIntent = new Intent(this, LoadingActivity.class);
+        PendingIntent intent = PendingIntent.getActivity(this, 0,
+                notificationIntent, 0);
         mNotifyManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         mBuilder = new NotificationCompat.Builder(this);
-        mBuilder.setContentTitle(getString(R.string.downloadTitle))
-                .setContentText(getString(R.string.downloadText))
+        mBuilder.setContentTitle(getString(R.string.download_title))
+                .setContentText(getString(R.string.download_text))
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentIntent(intent);
+    }
+
+    private void estimateDownload() {
+        var arg1 = parseInt(Args.arg1);
+        var arg2 = parseInt(Args.arg2);
+        var arg3 = parseInt(Args.arg3);
+        var arg4 = parseInt(Args.arg4);
+        var arg5 = parseInt(Args.arg5);
+        var arg6 = parseInt(Args.arg6);
+        var arg7 = parseInt(Args.arg7);
+        var arg8 = parseInt(Args.arg8);
+        var arg9 = parseInt(Args.arg9);
+        var arg10 =parseInt(Args.arg10);
+        var arg11 =parseInt(Args.arg11);
+        var arg12 =parseInt(Args.arg12);
+        var arg13 =parseInt(Args.arg13);
+        var arg14 =parseInt(Args.arg14);
+        var arg15 =parseInt(Args.arg15);
+        var arg16 =parseInt(Args.arg16);
+        var arg17 =parseInt(Args.arg17);
+        var arg18 =parseInt(Args.arg18);
+        var arg19 =parseInt(Args.arg19);
+        var arg20 =parseInt(Args.arg20);
+
+        if(arg1  = parseInt(Args.arg1);
+        if(arg2  = parseInt(Args.arg2);
+        if(arg3  = parseInt(Args.arg3);
+        if(arg4  = parseInt(Args.arg4);
+        if(arg5  = parseInt(Args.arg5);
+        if(arg6  = parseInt(Args.arg6);
+        if(arg7  = parseInt(Args.arg7);
+        if(arg8  = parseInt(Args.arg8);
+        if(arg9  = parseInt(Args.arg9);
+        if(arg10  =parseInt(Args.arg10);
+        if(arg11  =parseInt(Args.arg11);
+        if(arg12  =parseInt(Args.arg12);
+        if(arg13  =parseInt(Args.arg13);
+        if(arg14  =parseInt(Args.arg14);
+        if(arg15  =parseInt(Args.arg15);
+        if(arg16  =parseInt(Args.arg16);
+        if(arg17  =parseInt(Args.arg17);
+        if(arg18  =parseInt(Args.arg18);
+        if(arg19  =parseInt(Args.arg19);
+        if(arg20  =parseInt(Args.arg20);
+
+
     }
 
 }

@@ -20,5 +20,7 @@
     <string name="full_stat">Переключиться к расширенной статистике</string>
     <string name="simple_stat">Статистика</string>
     <string name="advanced_stat">Расширенная статистика</string>
+    <string name="download_title">Загрузка сообщений</string>
+    <string name="download_text">пусто</string>
 
 </resources>
