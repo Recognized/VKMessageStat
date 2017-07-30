@@ -1,5 +1,6 @@
 package com.vladsaif.vkmessagestat.ui;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
@@ -8,6 +9,8 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import com.vk.sdk.VKAccessToken;
 import com.vk.sdk.VKCallback;
 import com.vk.sdk.api.VKError;
@@ -15,6 +18,7 @@ import com.vk.sdk.api.VKResponse;
 import com.vladsaif.vkmessagestat.*;
 import com.vladsaif.vkmessagestat.adapters.DialogsAdapter;
 import com.vladsaif.vkmessagestat.db.DbHelper;
+import com.vladsaif.vkmessagestat.services.MessagesCollector;
 import com.vladsaif.vkmessagestat.utils.SetImage;
 import com.vladsaif.vkmessagestat.utils.Easies;
 import com.vladsaif.vkmessagestat.utils.Strings;
@@ -32,6 +36,7 @@ public class MainPage extends AppCompatActivity implements VKCallback<Void> {
     private RecyclerView mRecyclerView;
     private LinearLayoutManager mLayoutManager;
     private DbHelper dbHelper;
+    private Button goAdvanced;
 
     @Override
     protected void onStart() {
@@ -79,6 +84,17 @@ public class MainPage extends AppCompatActivity implements VKCallback<Void> {
         }
         setSupportActionBar(toolbar);
         token = VKAccessToken.tokenFromSharedPreferences(getApplication(), Strings.access_token);
+        goAdvanced = (Button) findViewById(R.id.button);
+        goAdvanced.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(getApplicationContext(), MessagesCollector.class);
+                intent.putExtra(Strings.commandType, Strings.commandDump);
+                startService(intent);
+                Intent openProgress = new Intent(getApplicationContext(), LoadingActivity.class);
+                startActivity(openProgress);
+            }
+        });
     }
 
     @Override

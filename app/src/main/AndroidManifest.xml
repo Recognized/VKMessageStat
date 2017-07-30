@@ -32,6 +32,9 @@
                 android:enabled="true"
                 android:exported="true">
         </service>
+
+        <activity android:name=".ui.LoadingActivity">
+        </activity>
     </application>
 
 </manifest>

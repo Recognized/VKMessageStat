@@ -35,5 +35,7 @@ public class Strings {
             commandType = "commandType",
             commandDump = "commandDump",
             counts = "counts",
-            counter = "counter";
+            counter = "counter",
+            advanced = "advanced",
+            chatters = "chatters";
 }

@@ -147,6 +147,9 @@ public class DbHelper extends SQLiteOpenHelper {
         data.execSQL("CREATE TABLE IF NOT EXISTS " + Strings.last_message_id +" (dialog_id INTEGER PRIMARY KEY, message_id INT);");
         data.execSQL("CREATE TABLE IF NOT EXISTS " + Strings.names +          " (dialog_id INTEGER PRIMARY KEY, name TEXT);");
         data.execSQL("CREATE TABLE IF NOT EXISTS " + Strings.pictures +       " (dialog_id INTEGER PRIMARY KEY, link TEXT);");
+        data.execSQL("CREATE TABLE IF NOT EXISTS " + Strings.advanced +       " (dialog_id INTEGER PRIMARY KEY, symbols INT, out INT," +
+                "                                                        photos INT, videos INT, walls INT, audios INT);");
+        data.execSQL("CREATE TABLE IF NOT EXISTS " + Strings.counts + " (dialog_id INTEGER PRIMARY KEY, counter INT);");
     }
 
     @Override

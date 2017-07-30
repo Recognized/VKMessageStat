@@ -178,6 +178,11 @@ public class VKRequest extends VKObject {
         this(method, parameters, null);
     }
 
+    public VKRequest(Looper looper, String method, VKParameters parameters) {
+        this(method, parameters, null);
+        mLooper = looper;
+    }
+
     @Deprecated
     public VKRequest(String method, VKParameters parameters, HttpMethod httpMethod,
                      Class<? extends VKApiModel> modelClass) {
