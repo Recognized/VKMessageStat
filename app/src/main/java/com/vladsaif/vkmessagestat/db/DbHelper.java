@@ -30,9 +30,9 @@ public class DbHelper extends SQLiteOpenHelper {
         onCreate(db);
     }
 
-    public static void getDialogs(final SQLiteDatabase db, final MainPage context) {
+    public static void getDialogs(final SQLiteDatabase db, final MainPage context, int count) {
         // TODO maybe I need fix locale somehow
-        VKRequest req = new VKRequest("messages.getDialogs", VKParameters.from("count", "20"));
+        VKRequest req = new VKRequest("messages.getDialogs", VKParameters.from("count", Integer.toString(count)));
         context.responses++;
         req.executeWithListener(new VKRequest.VKRequestListener() {
             @Override
@@ -45,6 +45,7 @@ public class DbHelper extends SQLiteOpenHelper {
                     Log.d(LOG_TAG, db.getPath());
                     Log.d(LOG_TAG, response.responseString);
                     JSONArray items = response.json.getJSONObject("response").getJSONArray("items");
+                    context.dialogsCount = response.json.getJSONObject("response").getInt("count");
                     for (int i = 0; i < items.length(); ++i) {
                         JSONObject message = items.getJSONObject(i).getJSONObject("message");
                         int chat_id = message.has("chat_id") ? message.getInt("chat_id") : -1;

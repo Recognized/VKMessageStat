@@ -6,16 +6,18 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.provider.ContactsContract;
+import android.util.Log;
 import com.vk.sdk.api.VKResponse;
 import com.vladsaif.vkmessagestat.utils.Strings;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Queue;
 
 
 public class Dumper extends Thread {
-    public final int GET_DIALOGS = 4;
+    public final String LOG_TAG = Dumper.class.getSimpleName();
     public Handler dumper;
     public int expect_count;
     public int expect_last;
@@ -70,6 +72,8 @@ public class Dumper extends Thread {
         dumper = new Handler() {
             @Override
             public void handleMessage(Message msg) {
+                Log.d(LOG_TAG, Long.toString(new Date().getTime()));
+                Log.d(LOG_TAG, Integer.toString(msg.what));
                 switch (msg.what) {
                     case VKWorker.FINISH_GET_COUNT:
                         current_count++;
@@ -79,7 +83,7 @@ public class Dumper extends Thread {
                         break;
                     case VKWorker.FINISH_GET_LAST:
                         current_last++;
-                        if(current_count == expect_count) {
+                        if(current_last == expect_last) {
                             onFinishLast.run();
                         }
                         break;
@@ -88,10 +92,18 @@ public class Dumper extends Thread {
                             if(!queue.isEmpty()) {
                                 nextDialog.call(queue.getFirst());
                             } else {
+                                Log.d(LOG_TAG, "Queue is empty");
                                 onFinishMessages.run();
                             }
                         }
                         break;
+                    case VKWorker.BEGIN_COLLECTING:
+                        if(!queue.isEmpty()) {
+                            nextDialog.call(queue.getFirst());
+                        } else {
+                            Log.d(LOG_TAG, "begin collecting");
+                            onFinishMessages.run();
+                        }
                 }
             }
         };

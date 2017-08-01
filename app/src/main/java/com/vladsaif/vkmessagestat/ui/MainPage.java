@@ -38,6 +38,7 @@ public class MainPage extends AppCompatActivity implements VKCallback<Void> {
     private LinearLayoutManager mLayoutManager;
     private DbHelper dbHelper;
     private Button goAdvanced;
+    public int dialogsCount;
 
     @Override
     protected void onStart() {
@@ -69,7 +70,7 @@ public class MainPage extends AppCompatActivity implements VKCallback<Void> {
         Toolbar toolbar = (Toolbar) findViewById(R.id.my_toolbar);
         dbHelper = new DbHelper(getApplicationContext(), "dialogs.db");
         mRecyclerView = (RecyclerView) findViewById(R.id.dialogs);
-        DbHelper.getDialogs(dbHelper.db, this);
+        DbHelper.getDialogs(dbHelper.db, this, 20);
         mLayoutManager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(mLayoutManager);
         // TODO correct settings

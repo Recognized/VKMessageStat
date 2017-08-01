@@ -51,11 +51,8 @@ public class MessagesCollectorNew extends Service {
         while (dumper.dumper == null) ;
         worker = new VKWorker(dumper.dumper, access_token);
         worker.start();
-        while (worker.mHandler == null);
+        while (worker.mHandler == null) ;
         requestHandler = worker.mHandler;
-        if (requestHandler == null) {
-            Log.e(LOG_TAG, "requestHandler is null");
-        }
         dataHandler = dumper.dumper;
         dataHandler.post(new Runnable() {
             @Override
@@ -68,7 +65,6 @@ public class MessagesCollectorNew extends Service {
         dataHandler.post(new Runnable() {
             @Override
             public void run() {
-                dumper.setQueue(new ArrayDeque<>(peers));
                 dumper.setOnFinishCount(getLastMessageIds);
                 dumper.setOnFinishLast(collectMessages);
                 dumper.setOnFinishMessages(finishWork);
@@ -141,6 +137,12 @@ public class MessagesCollectorNew extends Service {
                 count.close();
             }
             if (!peers.isEmpty()) {
+                ArrayDeque<Integer> d = new ArrayDeque<>();
+                for (Integer i : peers) {
+                    d.addLast(i);
+                }
+                dumper.setQueue(d);
+                dumper.expect_count = peers.size() / 25 + (peers.size() % 25 == 0 ? 0 : 1);
                 messageToCountOrLast(peers, VKWorker.GET_COUNT);
             } else {
                 // TODO what should i do i you don't have any dialogs?
@@ -177,6 +179,7 @@ public class MessagesCollectorNew extends Service {
                 cursor.close();
             }
             if (!needToCollect.isEmpty()) {
+                dumper.expect_last = needToCollect.size() / 25 + (needToCollect.size() % 25 == 0 ? 0 : 1);
                 messageToCountOrLast(needToCollect, VKWorker.GET_LAST);
             }
         }
@@ -185,18 +188,11 @@ public class MessagesCollectorNew extends Service {
     private Runnable collectMessages = new Runnable() {
         @Override
         public void run() {
-            for(Integer dialog : dialogs) {
-                Log.d(LOG_TAG, "Collecting: " + Integer.toString(dialog));
-                if(worker.realMessages.get(dialog) - worker.existingMessages.get(dialog) == 0) {
-                    break;
-                }
-                Message m = requestHandler.obtainMessage();
-                Bundle b = new Bundle();
-                b.putInt(Strings.peer_id, dialog);
-                b.putInt(Strings.start_message_id, worker.lastMessageIds.get(dialog));
-                m.setData(b);
-                requestHandler.sendMessage(m);
-            }
+            Message m = dataHandler.obtainMessage();
+            Bundle b = new Bundle();
+            m.setData(b);
+            m.what = VKWorker.BEGIN_COLLECTING;
+            dataHandler.sendMessage(m);
         }
     };
 
@@ -247,10 +243,9 @@ public class MessagesCollectorNew extends Service {
                 progress += Math.min(packSize, diff - currentProgress);
                 Log.d(LOG_TAG, "Progress " + Integer.toString(progress));
                 mNotifyManager.notify(NOTIFICATION_ID, mBuilder.setProgress(worker.allMessages, progress, false).build());
-                if(skipped == 0) {
+                if (skipped == 0) {
                     return -1;
-                }
-                else {
+                } else {
                     int new_start = response.json.getJSONObject("response").getInt("new_start");
                     sendMessageGetMessagePack(peer_id, new_start);
                     return 1;
@@ -268,6 +263,7 @@ public class MessagesCollectorNew extends Service {
         b.putInt(Strings.peer_id, peer_id);
         b.putInt(Strings.start_message_id, new_start);
         m.setData(b);
+        m.what = VKWorker.GET_MESSAGES;
         requestHandler.sendMessage(m);
     }
 

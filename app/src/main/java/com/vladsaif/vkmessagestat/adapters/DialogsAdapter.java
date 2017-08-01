@@ -7,6 +7,8 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
+import android.util.SparseArray;
+import android.util.SparseIntArray;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,15 +28,16 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
     private static final String here = "adapter";
     private static BitmapFactory.Options options = new BitmapFactory.Options();
     private final SQLiteDatabase db;
-    private HashMap<Integer, DialogData> data;
+    private SparseArray<DialogData> data;
     private ArrayList<Integer> positionToId;
     private SetImage imageSetter;
     private Context context;
+    private int dialogsCounter;
 
     public DialogsAdapter(final DbHelper helper, Context context, SetImage imageSetter) {
         this.imageSetter = imageSetter;
         this.context = context;
-        data = new HashMap<>();
+        data = new SparseArray<>();
         options.inPreferredConfig = Bitmap.Config.ARGB_8888;
         positionToId = new ArrayList<>();
         db = helper.getWritableDatabase();

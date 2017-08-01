@@ -21,6 +21,7 @@ public class VKWorker extends Thread {
     private final String LOG_TAG = VKWorker.class.getSimpleName();
     private final long fixedDelay = 1000;
     private Handler dumper;
+    private int executionCounter;
     public Handler mHandler;
     public String access_token;
     public SparseIntArray existingMessages;
@@ -30,6 +31,8 @@ public class VKWorker extends Thread {
     public static final int GET_LAST = 1;
     public static final int GET_COUNT = 2;
     public static final int GET_MESSAGES = 3;
+    public static final int GET_DIALOGS = 4;
+    public static final int BEGIN_COLLECTING = 101;
     public static final int FINISH_GET_LAST = 1001;
     public static final int FINISH_GET_COUNT = 1002;
     public static final int FINISH_GET_MESSAGES = 1003;
@@ -41,6 +44,7 @@ public class VKWorker extends Thread {
         realMessages = new SparseIntArray();
         lastMessageIds = new SparseIntArray();
         allMessages = 0;
+        executionCounter = 0;
     }
 
     @Override
@@ -52,6 +56,8 @@ public class VKWorker extends Thread {
             public void handleMessage(Message msg) {
                 final Bundle b = msg.getData();
                 Log.d(LOG_TAG, Long.toString(new Date().getTime()));
+                Log.d(LOG_TAG, Integer.toString(msg.what));
+                executionCounter++;
                 switch (msg.what) {
                     case GET_COUNT:
                         VKRequest req = new VKRequest("execute.getCount",
@@ -67,13 +73,6 @@ public class VKWorker extends Thread {
                                 notifyWorkFinished(FINISH_GET_COUNT);
                             }
                         });
-                        synchronized (VKWorker.this) {
-                            try {
-                                VKWorker.this.wait(fixedDelay);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                        }
                         break;
                     case GET_LAST:
                         VKRequest last = new VKRequest("execute.getLast", peersToParam(b.getIntegerArrayList("peers")));
@@ -88,13 +87,6 @@ public class VKWorker extends Thread {
                                 notifyWorkFinished(FINISH_GET_LAST);
                             }
                         });
-                        synchronized (VKWorker.this) {
-                            try {
-                                VKWorker.this.wait(fixedDelay);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                        }
                         break;
                     case GET_MESSAGES:
                         VKRequest messages = new VKRequest("execute.getMessages",
@@ -116,14 +108,21 @@ public class VKWorker extends Thread {
                                 dumper.sendMessage(m);
                             }
                         });
-                        synchronized (VKWorker.this) {
-                            try {
-                                VKWorker.this.wait(fixedDelay);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                        }
                         break;
+                    case GET_DIALOGS:
+                        int count = msg.arg1;
+                        int offset = msg.arg2;
+                        VKRequest getDialogs = new VKRequest("messages.getDialogs")
+
+                }
+                if(executionCounter % 3 == 0) {
+                    synchronized (VKWorker.this) {
+                        try {
+                            VKWorker.this.wait(fixedDelay);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
                 }
             }
         };
@@ -167,8 +166,8 @@ public class VKWorker extends Thread {
     private VKParameters peersToParam(ArrayList<Integer> peers) {
         // Achtung!! Extreme chance of making mistake, but it is Java and I can't do it better;
         String[] filteredPeers = new String[25];
-        for (Integer peer : peers) {
-            filteredPeers[0] = Integer.toString(peer);
+        for (int i = 0; i < peers.size(); ++i) {
+            filteredPeers[i] = Integer.toString(peers.get(i));
         }
         for (int i = peers.size(); i < 25; ++i) {
             filteredPeers[i] = "-1";
