@@ -37,5 +37,6 @@ public class Strings {
             counts = "counts",
             counter = "counter",
             advanced = "advanced",
-            chatters = "chatters";
+            chatters = "chatters",
+            progress = "progress";
 }

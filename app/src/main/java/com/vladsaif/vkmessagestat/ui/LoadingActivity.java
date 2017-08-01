@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.widget.ProgressBar;
 import com.vladsaif.vkmessagestat.R;
 import com.vladsaif.vkmessagestat.services.MessagesCollector;
+import com.vladsaif.vkmessagestat.services.MessagesCollectorNew;
 
 public class LoadingActivity extends AppCompatActivity {
 
@@ -19,7 +20,7 @@ public class LoadingActivity extends AppCompatActivity {
 
 
     private ServiceConnection sConn = new ServiceConnection() {
-        private MessagesCollector.Progress mBinder;
+        private MessagesCollectorNew.Progress mBinder;
         private Runnable refresh = new Runnable() {
             @Override
             public void run() {
@@ -30,7 +31,7 @@ public class LoadingActivity extends AppCompatActivity {
         };
         @Override
         public void onServiceConnected(ComponentName componentName, final IBinder iBinder) {
-            mBinder = (MessagesCollector.Progress) iBinder;
+            mBinder = (MessagesCollectorNew.Progress) iBinder;
             helperRecur();
         }
 
@@ -50,6 +51,6 @@ public class LoadingActivity extends AppCompatActivity {
         setContentView(R.layout.activity_loading);
         handler = new Handler();
         progressBar = (ProgressBar) findViewById(R.id.progressBar);
-        bindService(new Intent(getApplicationContext(), MessagesCollector.class), sConn, 0);
+        bindService(new Intent(getApplicationContext(), MessagesCollectorNew.class), sConn, 0);
     }
 }

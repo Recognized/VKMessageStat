@@ -19,6 +19,7 @@ import com.vladsaif.vkmessagestat.*;
 import com.vladsaif.vkmessagestat.adapters.DialogsAdapter;
 import com.vladsaif.vkmessagestat.db.DbHelper;
 import com.vladsaif.vkmessagestat.services.MessagesCollector;
+import com.vladsaif.vkmessagestat.services.MessagesCollectorNew;
 import com.vladsaif.vkmessagestat.utils.SetImage;
 import com.vladsaif.vkmessagestat.utils.Easies;
 import com.vladsaif.vkmessagestat.utils.Strings;
@@ -88,7 +89,7 @@ public class MainPage extends AppCompatActivity implements VKCallback<Void> {
         goAdvanced.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Intent intent = new Intent(getApplicationContext(), MessagesCollector.class);
+                Intent intent = new Intent(getApplicationContext(), MessagesCollectorNew.class);
                 intent.putExtra(Strings.commandType, Strings.commandDump);
                 startService(intent);
                 Intent openProgress = new Intent(getApplicationContext(), LoadingActivity.class);
