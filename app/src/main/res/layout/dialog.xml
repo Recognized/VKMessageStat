@@ -3,12 +3,14 @@
               xmlns:app="http://schemas.android.com/apk/res-auto" android:orientation="horizontal"
               android:layout_width="match_parent"
               android:layout_height="wrap_content"
-              android:padding="5dp">
+              android:padding="5dp"
+              android:background="@color/vk_white">
 
 
     <ImageView
-            android:layout_height="80dp" app:srcCompat="@drawable/stub" android:id="@+id/main_page_avatar"
-            android:layout_width="80dp"/>
+            android:layout_height="75dp" app:srcCompat="@drawable/stub" android:id="@+id/main_page_avatar"
+            android:layout_width="75dp"
+            android:padding="5dp"/>
     <LinearLayout
             android:orientation="vertical"
             android:layout_width="match_parent"
@@ -29,26 +31,26 @@
 
             <TableRow android:layout_width="match_parent" android:layout_height="match_parent">
                 <TextView
-                        android:text="message_count_name"
+                        android:text="@string/message_count"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:id="@+id/message_count_name"
                         android:textAppearance="@style/TextAppearance.AppCompat.Body1"/>
-                <TextView
-                        android:text="mcounter"
+                <ProgressBar
+                        style="?android:attr/progressBarStyleSmall"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" android:id="@+id/mcounter"
-                        android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+                        android:layout_height="wrap_content"
+                        android:id="@+id/progressBar2"
                         android:paddingStart="@dimen/table"/>
             </TableRow>
             <TableRow android:layout_width="match_parent" android:layout_height="match_parent">
                 <TextView
-                        android:text="message_symbols"
+                        android:text="@string/symbols_count"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" android:id="@+id/message_symbols"
                         android:textAppearance="@style/TextAppearance.AppCompat.Body1"/>
                 <TextView
-                        android:text="scounter"
+                        android:text="@string/unavailable"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" android:id="@+id/scounter"
                         android:textAppearance="@style/TextAppearance.AppCompat.Body1"

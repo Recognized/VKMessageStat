@@ -1,8 +1,13 @@
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:gravity="bottom">
-        <shape android:shape="rectangle">
-            <size android:height="1px"/>
-            <solid android:color="@color/bottom_bar_color"/>
-        </shape>
-    </item>
+<item><layer-list>
+        <item><shape >
+            <solid android:color="@color/vk_light_color" />
+
+        </shape></item>
+        <item android:bottom="1dp"><shape >
+            <solid android:color="@color/vk_white" />
+        </shape></item>
+
+    </layer-list>
+</item>
 </selector>

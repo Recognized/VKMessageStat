@@ -22,5 +22,10 @@
     <string name="advanced_stat">Расширенная статистика</string>
     <string name="download_title">Загрузка сообщений</string>
     <string name="download_text">пусто</string>
+    <string name="message_count">Кол-во сообщений</string>
+    <string name="symbols_count">Кол-во символов</string>
+    <string name="unavailable">недоступно</string>
+    <string name="counting">ведется подсчет…</string>
+
 
 </resources>

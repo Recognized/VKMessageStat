@@ -16,8 +16,11 @@ import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import com.vladsaif.vkmessagestat.R;
 import com.vladsaif.vkmessagestat.db.DbHelper;
@@ -41,7 +44,7 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
     private HashMap<ImageView, String> carouselPics;
     private MainPage context;
     private int currentLoadedDialogs;
-    private final int fixedCount = 30;
+    private final int fixedCount = 200;
     boolean sent = false;
     private final LinearLayoutManager linearLayoutManager;
     private Bitmap chatPlaceholder;
@@ -96,6 +99,15 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
             } while (pictures.moveToNext());
         }
         pictures.close();
+
+        Cursor counts = db.rawQuery("SELECT dialog_id, counter FROM counts;", new String[]{});
+        if(counts.moveToFirst()) {
+            do {
+                Integer id = counts.getInt(counts.getColumnIndex("dialog_id"));
+                data.get(id).messages = counts.getInt(counts.getColumnIndex("counter"));
+            } while (counts.moveToNext());
+        }
+        counts.close();
     }
 
     private Runnable fetchNewData =  new Runnable() {
@@ -136,8 +148,10 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
             holder.avatar.setImageBitmap(image);
         }
         holder.title.setText(data.get(dialog_id).name);
-        holder.mcounter.setText("0");
-        holder.scounter.setText("0");
+        /*if(data.get(dialog_id).messages != null) {
+            holder.mcounter.setText(data.get(dialog_id).messages);
+        }*/
+        holder.scounter.setText("-");
     }
 
     public RecyclerView.OnScrollListener scrolling = new RecyclerView.OnScrollListener() {
@@ -168,7 +182,7 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
         public LinearLayout layout;
         public ImageView avatar;
         public TextView title;
-        public TextView mcounter;
+        public ProgressBar mcounter;
         public TextView scounter;
         public int position;
 
@@ -177,7 +191,7 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
             layout = (LinearLayout) v;
             avatar = layout.findViewById(R.id.main_page_avatar);
             title = layout.findViewById(R.id.dialog_title);
-            mcounter = layout.findViewById(R.id.mcounter);
+            mcounter = layout.findViewById(R.id.progressBar2);
             scounter = layout.findViewById(R.id.scounter);
         }
     }
@@ -206,8 +220,38 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
 
         protected void onPostExecute(AsyncParam result) {
             if(result.holder.position == result.mPosition && result.bitmap != null){
-                result.holder.avatar.setImageBitmap(result.bitmap);
+                ImageViewAnimatedChange(result.holder.avatar, result.bitmap);
             }
         }
+    }
+
+    public class SetMessages extends AsyncTask<ViewHolder, Void, Integer> {
+        @Override
+        protected Integer doInBackground(ViewHolder... viewHolders) {
+            
+            return null;
+        }
+    }
+
+
+    public void ImageViewAnimatedChange(final ImageView v, final Bitmap new_image) {
+        final Animation anim_out = AnimationUtils.loadAnimation(context, android.R.anim.fade_out);
+        final Animation anim_in  = AnimationUtils.loadAnimation(context, android.R.anim.fade_in);
+        anim_out.setAnimationListener(new Animation.AnimationListener()
+        {
+            @Override public void onAnimationStart(Animation animation) {}
+            @Override public void onAnimationRepeat(Animation animation) {}
+            @Override public void onAnimationEnd(Animation animation)
+            {
+                v.setImageBitmap(new_image);
+                anim_in.setAnimationListener(new Animation.AnimationListener() {
+                    @Override public void onAnimationStart(Animation animation) {}
+                    @Override public void onAnimationRepeat(Animation animation) {}
+                    @Override public void onAnimationEnd(Animation animation) {}
+                });
+                v.startAnimation(anim_in);
+            }
+        });
+        v.startAnimation(anim_out);
     }
 }

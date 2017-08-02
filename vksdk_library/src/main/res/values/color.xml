@@ -4,7 +4,7 @@
     <color name="vk_grey_color">#F0F2F5</color>
     <color name="vk_white">#fff</color>
     <color name="vk_light_color">#A7C2DF</color>
-    <color name="vk_clear">#0000</color>
+    <color name="vk_clear">#00000000</color>
     <color name="vk_black_pressed">#1000</color>
     <color name="vk_black">#000</color>
     <color name="vk_share_blue_color">#5181b8</color>
