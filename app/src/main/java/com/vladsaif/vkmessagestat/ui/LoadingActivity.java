@@ -9,7 +9,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.widget.ProgressBar;
 import com.vladsaif.vkmessagestat.R;
-import com.vladsaif.vkmessagestat.services.MessagesCollector;
 import com.vladsaif.vkmessagestat.services.MessagesCollectorNew;
 
 public class LoadingActivity extends AppCompatActivity {
