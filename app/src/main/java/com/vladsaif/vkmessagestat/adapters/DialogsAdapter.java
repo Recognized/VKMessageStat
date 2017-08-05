@@ -228,7 +228,7 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
     public class SetMessages extends AsyncTask<ViewHolder, Void, Integer> {
         @Override
         protected Integer doInBackground(ViewHolder... viewHolders) {
-            
+
             return null;
         }
     }

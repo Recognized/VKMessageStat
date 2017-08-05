@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:orientation="horizontal"
+              android:layout_width="match_parent"
+              android:layout_height="200dp"
+android:background="@color/vk_white">
+    <ImageView
+            android:layout_height="60dp"
+            android:id="@+id/main_page_avatar"
+            android:layout_width="60dp"
+            android:padding="5dp"/>
+    <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingStart="5dp"
+            android:paddingEnd="5dp">
+        <TextView
+                android:id="@+id/dialog_title"
+                android:text="Dialog name stub"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAppearance="@style/TextAppearance.AppCompat.Subhead" android:fontFamily="sans-serif-condensed"
+                android:textSize="18sp"/>
+        <TextView
+                android:id="@+id/time"
+                android:text="00:00"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+                android:textColor="@color/vk_share_link_color"/>
+        <TextView
+                android:id="@+id/content"
+                android:text="This is simple content of the message bla-bla-bla-bla"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="@style/TextAppearance.AppCompat.Body1" android:textAllCaps="false"
+                android:typeface="normal"/>
+    </LinearLayout>
+
+</LinearLayout>

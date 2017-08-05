@@ -5,6 +5,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.os.*;
 import android.support.annotation.IntegerRes;
 import android.util.Log;
+import android.util.SparseArray;
 import android.util.SparseIntArray;
 import com.vk.sdk.api.VKError;
 import com.vk.sdk.api.VKParameters;
@@ -30,6 +31,7 @@ public class VKWorker extends Thread {
     public SparseIntArray existingMessages;
     public SparseIntArray realMessages;
     public SparseIntArray lastMessageIds;
+    public SparseArray<String> dialogIdToName;
     public SparseIntArray time;
     public int allMessages;
     public int dialogsCount;
@@ -54,6 +56,7 @@ public class VKWorker extends Thread {
         realMessages = new SparseIntArray();
         lastMessageIds = new SparseIntArray();
         time = new SparseIntArray();
+        dialogIdToName = new SparseArray<>();
         allMessages = 0;
         executionCounter = 0;
     }
@@ -105,6 +108,7 @@ public class VKWorker extends Thread {
                 final Bundle b = msg.getData();
                 Log.d(LOG_TAG, Long.toString(new Date().getTime()));
                 Log.d(LOG_TAG, Integer.toString(msg.what));
+                boolean secureMethod = true;
                 switch (msg.what) {
                     case GET_COUNT:
                         VKRequest req = new VKRequest("execute.getCount",
@@ -144,18 +148,22 @@ public class VKWorker extends Thread {
                                 VKParameters.from("user_ids", Easies.join(b.getIntegerArrayList("user_ids")),
                                 "fields", "has_photo,photo_200"));
                         users.executeWithListener(getUsersListener);
+                        secureMethod = false;
                         break;
                     case GET_GROUPS:
                         VKRequest groups = new VKRequest("groups.getById",
                                 VKParameters.from("group_ids", Easies.join(b.getIntegerArrayList("group_ids"))));
                         groups.executeWithListener(getGroupsListener);
+                        secureMethod = false;
                         break;
                 }
-                synchronized (VKWorker.this) {
-                    try {
-                        VKWorker.this.wait(fixedDelay);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
+                if(secureMethod) {
+                    synchronized (VKWorker.this) {
+                        try {
+                            VKWorker.this.wait(fixedDelay);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
 

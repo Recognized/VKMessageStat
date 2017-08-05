@@ -3,16 +3,22 @@ package com.vladsaif.vkmessagestat.utils;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.*;
+import android.text.method.SingleLineTransformationMethod;
 import android.util.Log;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.Locale;
 
 public class Easies {
     public enum DIALOG_TYPE {USER, CHAT, COMMUNITY}
+
     private static final String LOG_TAG = "Utils.Easies";
+    public static String[] rus_months = new String[]{"янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"};
 
     // Use only for avatar's of users
     public static Bitmap getCircleBitmap(Bitmap source) {
@@ -58,11 +64,11 @@ public class Easies {
 
     public static String join(ArrayList<Integer> ids) {
         StringBuilder temp = new StringBuilder();
-        for(int i = 0; i < ids.size()-1; ++i) {
+        for (int i = 0; i < ids.size() - 1; ++i) {
             temp.append(ids.get(i));
             temp.append(',');
         }
-        temp.append(ids.get(ids.size()-1));
+        temp.append(ids.get(ids.size() - 1));
         return temp.toString();
     }
 
@@ -83,9 +89,12 @@ public class Easies {
 
     public static DIALOG_TYPE resolveType(String s) {
         switch (s) {
-            case Strings.chat: return DIALOG_TYPE.CHAT;
-            case Strings.user: return DIALOG_TYPE.USER;
-            default: return DIALOG_TYPE.COMMUNITY;
+            case Strings.chat:
+                return DIALOG_TYPE.CHAT;
+            case Strings.user:
+                return DIALOG_TYPE.USER;
+            default:
+                return DIALOG_TYPE.COMMUNITY;
         }
     }
 
@@ -126,6 +135,28 @@ public class Easies {
 
     public static String transformLink(String s) {
         // some magical replacements providing unique filename
-        return s.substring(18).replace("/", "");
+        return s.substring(20).replace("/", "");
+    }
+
+    // TODO Some tests, please
+    public static String dateToHumanReadable(int date) {
+        long current = new Date().getTime();
+        long unix_time = date * 1000L;
+        SimpleDateFormat day = new SimpleDateFormat("d", Locale.ENGLISH);
+        SimpleDateFormat year = new SimpleDateFormat("yyyy", Locale.ENGLISH);
+        Date currentDate = new Date(current);
+        Date someDate = new Date(unix_time);
+        // same day
+        if (current - unix_time < 86400 * 1000L && day.format(currentDate).equals(day.format(someDate))) {
+            return new SimpleDateFormat("HH:mm", Locale.ENGLISH).format(someDate);
+        } else if (current - unix_time < 2 * 86400 * 1000L && day.format(new Date(unix_time + 86400L))
+                .equals(day.format(currentDate))) {
+            return "вчера";
+        } else if (year.format(currentDate).equals(year.format(someDate))) {
+            return day.format(someDate) + " " +
+                    rus_months[Integer.decode(new SimpleDateFormat("M", Locale.ENGLISH).format(someDate))];
+        } else return day.format(someDate) + " " +
+                rus_months[Integer.decode(new SimpleDateFormat("M", Locale.ENGLISH).format(someDate))]
+                + " " + new SimpleDateFormat("yyyy", Locale.ENGLISH).format(someDate);
     }
 }
