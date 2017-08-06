@@ -1,30 +1,16 @@
 package com.vladsaif.vkmessagestat.db;
 
-import android.content.ContentValues;
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
-import android.util.SparseIntArray;
-import com.vk.sdk.api.VKParameters;
-import com.vk.sdk.api.VKRequest;
-import com.vk.sdk.api.VKResponse;
-import com.vladsaif.vkmessagestat.services.MessagesCollectorNew;
-import com.vladsaif.vkmessagestat.ui.MainPage;
-import com.vladsaif.vkmessagestat.utils.Easies;
 import com.vladsaif.vkmessagestat.utils.Strings;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.util.ArrayList;
 
 
 public class DbHelper extends SQLiteOpenHelper {
     private static final int DATABASE_VERSION = 1;
     private static final String LOG_TAG = "DbHelper";
     public SQLiteDatabase db;
-    public static int dialogsCount;
 
     public DbHelper(final Context context, String databaseName) {
         super(new DatabaseContext(context), databaseName, null, DATABASE_VERSION);

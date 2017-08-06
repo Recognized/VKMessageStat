@@ -3,12 +3,11 @@ package com.vladsaif.vkmessagestat.utils;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.*;
-import android.text.method.SingleLineTransformationMethod;
-import android.util.Log;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
+import android.widget.ImageView;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -98,41 +97,6 @@ public class Easies {
         }
     }
 
-    public static void savePic(Bitmap pic, String filename, Context context) {
-        String dbfile = getAppAbsolutePath(context) + Strings.photos + File.separator;
-        File folder = new File(dbfile);
-        folder.mkdirs();
-        FileOutputStream out = null;
-        try {
-            out = new FileOutputStream(dbfile + filename);
-            pic.compress(Bitmap.CompressFormat.PNG, 100, out);
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                if (out != null) {
-                    out.close();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    public static Bitmap loadPic(String link, BitmapFactory.Options options, Context context) {
-        String photoPath = getPhotosPath(context);
-        File folder = new File(photoPath);
-        folder.mkdirs();
-        try {
-            Log.d(LOG_TAG, "picture is loaded");
-            return BitmapFactory.decodeFile(photoPath + transformLink(link), options);
-        } catch (Exception ex) {
-            Log.d(LOG_TAG, "picture isn't loaded, trying download" + ex.toString());
-            return null;
-        }
-
-    }
-
     public static String transformLink(String s) {
         // some magical replacements providing unique filename
         return s.substring(20).replace("/", "");
@@ -158,5 +122,39 @@ public class Easies {
         } else return day.format(someDate) + " " +
                 rus_months[Integer.decode(new SimpleDateFormat("M", Locale.ENGLISH).format(someDate))-1]
                 + " " + new SimpleDateFormat("yyyy", Locale.ENGLISH).format(someDate);
+    }
+
+    public static void imageViewAnimatedChange(final ImageView v, final Bitmap new_image, Context context) {
+        final Animation anim_out = AnimationUtils.loadAnimation(context, android.R.anim.fade_out);
+        final Animation anim_in = AnimationUtils.loadAnimation(context, android.R.anim.fade_in);
+        anim_out.setAnimationListener(new Animation.AnimationListener() {
+            @Override
+            public void onAnimationStart(Animation animation) {
+            }
+
+            @Override
+            public void onAnimationRepeat(Animation animation) {
+            }
+
+            @Override
+            public void onAnimationEnd(Animation animation) {
+                v.setImageBitmap(new_image);
+                anim_in.setAnimationListener(new Animation.AnimationListener() {
+                    @Override
+                    public void onAnimationStart(Animation animation) {
+                    }
+
+                    @Override
+                    public void onAnimationRepeat(Animation animation) {
+                    }
+
+                    @Override
+                    public void onAnimationEnd(Animation animation) {
+                    }
+                });
+                v.startAnimation(anim_in);
+            }
+        });
+        v.startAnimation(anim_out);
     }
 }

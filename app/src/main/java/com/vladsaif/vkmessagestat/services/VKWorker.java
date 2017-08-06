@@ -1,9 +1,9 @@
 package com.vladsaif.vkmessagestat.services;
 
-import android.content.ContentValues;
-import android.database.sqlite.SQLiteDatabase;
-import android.os.*;
-import android.support.annotation.IntegerRes;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
@@ -26,7 +26,6 @@ public class VKWorker extends Thread {
     private final String LOG_TAG = VKWorker.class.getSimpleName();
     private final long fixedDelay = 334;
     private Handler dumper;
-    private int executionCounter;
     public Handler mHandler;
     public String access_token;
     public SparseIntArray existingMessages;
@@ -59,7 +58,6 @@ public class VKWorker extends Thread {
         time = new SparseIntArray();
         dialogData = new SparseArray<>();
         allMessages = 0;
-        executionCounter = 0;
     }
 
     private ListenerWithError getCountListener = new ListenerWithError() {
@@ -199,8 +197,8 @@ public class VKWorker extends Thread {
                 JSONObject obj = array.getJSONObject(i);
                 lastMessageIds.put(obj.getInt("peer_id"), obj.getInt("id"));
             }
-        } catch (JSONException e) {
-            e.printStackTrace();
+        } catch (JSONException ex) {
+            throw new RuntimeException("Not expected. " + ex.toString());
         }
     }
 
@@ -215,7 +213,7 @@ public class VKWorker extends Thread {
                 allMessages += count - existingMessages.get(peer);
             }
         } catch (JSONException ex) {
-            Log.e(LOG_TAG, ex.toString() + '\n' + response.json.toString());
+            throw new RuntimeException("Not expected. " + ex.toString());
         }
     }
 

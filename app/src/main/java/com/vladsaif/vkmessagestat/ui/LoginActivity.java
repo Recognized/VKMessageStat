@@ -14,11 +14,9 @@ import com.vk.sdk.VKAccessToken;
 import com.vk.sdk.VKCallback;
 import com.vk.sdk.VKScope;
 import com.vk.sdk.VKSdk;
-import com.vk.sdk.api.VKApiConst;
 import com.vk.sdk.api.VKError;
 import com.vladsaif.vkmessagestat.R;
 import com.vladsaif.vkmessagestat.services.MessagesCollectorNew;
-import com.vladsaif.vkmessagestat.ui.MainPage;
 import com.vladsaif.vkmessagestat.utils.Strings;
 
 import java.io.File;
@@ -82,7 +80,7 @@ public class LoginActivity extends AppCompatActivity {
             }
             @Override
             public void onError(VKError er) {
-            // Произошла ошибка авторизации (например, пользователь запретил авторизацию)
+                // Произошла ошибка авторизации (например, пользователь запретил авторизацию)
                 error.setVisibility(View.VISIBLE);
             }
         })) {

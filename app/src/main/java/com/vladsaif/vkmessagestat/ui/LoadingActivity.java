@@ -4,75 +4,70 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.os.AsyncTask;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
-import android.support.v7.widget.*;
 import android.util.Log;
-import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.*;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 import com.vladsaif.vkmessagestat.R;
-import com.vladsaif.vkmessagestat.db.DbHelper;
 import com.vladsaif.vkmessagestat.db.MessageData;
 import com.vladsaif.vkmessagestat.services.MessagesCollectorNew;
-import com.vladsaif.vkmessagestat.utils.AsyncParam;
+import com.vladsaif.vkmessagestat.utils.CacheFile;
 import com.vladsaif.vkmessagestat.utils.Easies;
-
-import java.io.InputStream;
-import java.net.URL;
+import com.vladsaif.vkmessagestat.utils.SetImageBase;
 
 public class LoadingActivity extends AppCompatActivity {
-    public final String LOG_TAG = LoadingActivity.class.getSimpleName();
-    private static BitmapFactory.Options options = new BitmapFactory.Options();
+    public static final String LOG_TAG = LoadingActivity.class.getSimpleName();
     private Handler handler;
-    private final int periodMs = 500;
+    private final int periodProgress = 500;
+    private final int periodMessage = 3000;
     private ProgressBar progressBar;
-    private LinearLayout messageContainter;
-    private Bitmap chatPlaceholder;
-    private Bitmap otherPlaceholder;
+    private LinearLayout messageContainer;
     private int currentCounter;
     private int prevId = -1;
 
     private ServiceConnection sConn = new ServiceConnection() {
         private MessagesCollectorNew.Progress mBinder;
-        private Runnable refresh = new Runnable() {
+        private Runnable refreshProgress = new Runnable() {
             @Override
             public void run() {
                 int progress = mBinder.getProgress();
                 progressBar.setProgress(progress);
+                if (progress < 100) handler.postDelayed(refreshProgress, periodProgress);
+            }
+        };
+        private Runnable refreshMessage = new Runnable() {
+            @Override
+            public void run() {
                 MessageData data = mBinder.getSomeMessage();
                 if(data != null && data.id != prevId) {
                     prevId = data.id;
                     Log.d(LOG_TAG, "Data isn't null");
-                    messageContainter.removeAllViewsInLayout();
-                    View message = LayoutInflater.from(messageContainter.getContext())
-                            .inflate(R.layout.message, messageContainter, true);
+                    messageContainer.removeAllViewsInLayout();
+                    View message = LayoutInflater.from(messageContainer.getContext())
+                            .inflate(R.layout.message, messageContainer, true);
                     fillData(data, message);
                 }
-                if (progress < 100) helperRecur();
+                handler.postDelayed(refreshMessage, periodMessage);
             }
         };
         @Override
         public void onServiceConnected(ComponentName componentName, final IBinder iBinder) {
             mBinder = (MessagesCollectorNew.Progress) iBinder;
-            helperRecur();
-        }
-
-        public void helperRecur() {
-            handler.postDelayed(refresh, periodMs);
+            handler.post(refreshMessage);
+            handler.post(refreshProgress);
         }
 
         @Override
         public void onServiceDisconnected(ComponentName componentName) {
-
+            handler.removeCallbacksAndMessages(null);
         }
     };
 
@@ -84,52 +79,24 @@ public class LoadingActivity extends AppCompatActivity {
         TextView date = v.findViewById(R.id.time);
         date.setText(Easies.dateToHumanReadable(messageData.date));
         ImageView avatar = v.findViewById(R.id.main_page_avatar);
-        if(messageData.data.type == Easies.DIALOG_TYPE.CHAT) {
-            avatar.setImageBitmap(chatPlaceholder);
-        } else {
-            avatar.setImageBitmap(otherPlaceholder);
-        }
-        Bitmap image = Easies.loadPic(messageData.data.link, options, getApplicationContext());
-        if(image == null) {
-            Log.d(LOG_TAG, "No saved image, link: " + messageData.data.link);
-            (new SetImage(avatar, ++currentCounter)).execute(messageData.data.link);
-        } else {
-            avatar.setImageBitmap(image);
-        }
+        CacheFile.setDefaultImage(avatar, messageData.data.type, this);
+        (new SetImage(avatar, ++currentCounter, this)).execute(messageData.data.link);
     }
 
-    class SetImage extends AsyncTask<String, Void, Bitmap> {
+    class SetImage extends SetImageBase {
         private ImageView view;
         private int counter;
 
-        public SetImage(ImageView view, int counter) {
+        public SetImage(ImageView view, int counter, Context context) {
+            super(context);
             this.view = view;
             this.counter = counter;
         }
         @Override
-        protected Bitmap doInBackground(String[] pairs) {
-            String link = pairs[0];
-            Bitmap bitmap = null;
-            if (!link.equals("no_photo")) {
-                try {
-                    InputStream inputStream = new URL(link).openStream();   // Download Image from URL
-                    bitmap = Easies.getCircleBitmap(BitmapFactory.decodeStream(inputStream));       // Decode Bitmap
-                    inputStream.close();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                Easies.savePic(bitmap, Easies.transformLink(link), getApplicationContext() );
-            } else {
-                bitmap = null;
-            }
-            return bitmap;
-        }
-
-        @Override
         protected void onPostExecute(Bitmap bitmap) {
             if(bitmap != null && currentCounter == counter) {
                 Log.d(LOG_TAG, "image has been set");
-                view.setImageBitmap(bitmap);
+                Easies.imageViewAnimatedChange(view, bitmap, context);
             }
         }
     }
@@ -143,14 +110,15 @@ public class LoadingActivity extends AppCompatActivity {
         android.support.v7.widget.Toolbar toolbar = (android.support.v7.widget.Toolbar) findViewById(R.id.toolbar);
         toolbar.setTitle(getString(R.string.download_title));
         setSupportActionBar(toolbar);
-        DbHelper dbHelper = new DbHelper(this, "dialogs.db");
-        chatPlaceholder = Easies.getCircleBitmap(
-                BitmapFactory.decodeResource(getApplicationContext().getResources(), R.drawable.community_100));
-        otherPlaceholder = Easies.getCircleBitmap(
-                BitmapFactory.decodeResource(getApplicationContext().getResources(), R.drawable.camera_100));
         handler = new Handler();
         progressBar = (ProgressBar) findViewById(R.id.progressBar);
-        messageContainter  = (LinearLayout) findViewById(R.id.message_container);
+        messageContainer = (LinearLayout) findViewById(R.id.message_container);
         bindService(new Intent(getApplicationContext(), MessagesCollectorNew.class), sConn, 0);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        handler.removeCallbacksAndMessages(null);
     }
 }

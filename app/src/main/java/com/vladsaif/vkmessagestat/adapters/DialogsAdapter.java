@@ -1,25 +1,17 @@
 package com.vladsaif.vkmessagestat.adapters;
 
-import android.app.Service;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.os.AsyncTask;
-import android.os.Bundle;
 import android.os.Message;
-import android.provider.ContactsContract;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
-import android.util.Pair;
 import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -29,41 +21,30 @@ import com.vladsaif.vkmessagestat.db.DbHelper;
 import com.vladsaif.vkmessagestat.db.DialogData;
 import com.vladsaif.vkmessagestat.services.VKWorker;
 import com.vladsaif.vkmessagestat.ui.MainPage;
-import com.vladsaif.vkmessagestat.utils.*;
+import com.vladsaif.vkmessagestat.utils.CacheFile;
+import com.vladsaif.vkmessagestat.utils.Easies;
+import com.vladsaif.vkmessagestat.utils.SetImageBase;
 
-import java.io.InputStream;
-import java.net.URL;
 import java.util.ArrayList;
-import java.util.HashMap;
 
 public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHolder> {
 
     private static final String here = "adapter";
-    private static BitmapFactory.Options options = new BitmapFactory.Options();
     private final SQLiteDatabase db;
     private SparseArray<DialogData> data;
     private ArrayList<Integer> positionToId;
-    private HashMap<ImageView, String> carouselPics;
     private MainPage context;
     private int currentLoadedDialogs;
     private final int fixedCount = 200;
     boolean sent = false;
     private final LinearLayoutManager linearLayoutManager;
-    private Bitmap chatPlaceholder;
-    private Bitmap otherPlaceholder;
 
     public DialogsAdapter(final DbHelper helper, MainPage context, LinearLayoutManager ll) {
         this.context = context;
         linearLayoutManager = ll;
-        carouselPics = new HashMap<>();
         data = new SparseArray<>();
-        options.inPreferredConfig = Bitmap.Config.ARGB_8888;
         positionToId = new ArrayList<>();
         db = helper.getWritableDatabase();
-        chatPlaceholder = Easies.getCircleBitmap(
-                BitmapFactory.decodeResource(context.getApplicationContext().getResources(), R.drawable.community_100));
-        otherPlaceholder = Easies.getCircleBitmap(
-                BitmapFactory.decodeResource(context.getApplicationContext().getResources(), R.drawable.camera_100));
         fetchData();
         currentLoadedDialogs = positionToId.size();
         context.dumper.setOnFinishGetDialogs(fetchNewData);
@@ -136,24 +117,11 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
         Log.d(here, "onBindViewHolder");
         Integer dialog_id = positionToId.get(position);
         holder.position = position;
-        if(data.get(dialog_id).type == Easies.DIALOG_TYPE.CHAT) {
-            holder.avatar.setImageBitmap(chatPlaceholder);
-        } else {
-            holder.avatar.setImageBitmap(otherPlaceholder);
-        }
-        String link = data.get(dialog_id).link;
-        carouselPics.put(holder.avatar, link);
-        Bitmap image = Easies.loadPic(link, options, context);
-        if (image == null) {
-            (new SetImage()).execute(new AsyncParam(data.get(dialog_id).link, holder, position, null));
-        } else {
-            holder.avatar.setImageBitmap(image);
-        }
         holder.title.setText(data.get(dialog_id).name);
-        /*if(data.get(dialog_id).messages != null) {
-            holder.mcounter.setText(data.get(dialog_id).messages);
-        }*/
         holder.scounter.setText("-");
+        String link = data.get(dialog_id).link;
+        CacheFile.setDefaultImage(holder.avatar, data.get(dialog_id).type, context);
+        (new SetImage(holder, position, context)).execute(link);
     }
 
     public RecyclerView.OnScrollListener scrolling = new RecyclerView.OnScrollListener() {
@@ -198,62 +166,22 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
         }
     }
 
-    public class SetImage extends AsyncTask<AsyncParam, Void, AsyncParam> {
+    public class SetImage extends SetImageBase {
+        private ViewHolder holder;
+        private int mPosition;
+
+        public SetImage(ViewHolder holder, int currentHolderPosition, Context context) {
+            super(context);
+            this.holder = holder;
+            this.mPosition = currentHolderPosition;
+        }
+
         @Override
-        protected AsyncParam doInBackground(AsyncParam[] params) {
-            String link = params[0].str;
-            Bitmap bitmap = null;
-            if (!link.equals("no_photo")) {
-                try {
-                    InputStream inputStream = new URL(link).openStream();   // Download Image from URL
-                    bitmap = Easies.getCircleBitmap(BitmapFactory.decodeStream(inputStream));       // Decode Bitmap
-                    inputStream.close();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                Easies.savePic(bitmap, Easies.transformLink(link), context.getApplicationContext() );
-            } else {
-                bitmap = null;
-            }
-            return new AsyncParam(link, params[0].holder, params[0].mPosition, bitmap);
-        }
-        protected void onProgressUpdate(Void... params) {
-        }
-
-        protected void onPostExecute(AsyncParam result) {
-            if(result.holder.position == result.mPosition && result.bitmap != null){
-                ImageViewAnimatedChange(result.holder.avatar, result.bitmap);
+        protected void onPostExecute(Bitmap image) {
+            if (holder.position == mPosition && image != null) {
+                Easies.imageViewAnimatedChange(holder.avatar, image, context);
             }
         }
     }
 
-    public class SetMessages extends AsyncTask<ViewHolder, Void, Integer> {
-        @Override
-        protected Integer doInBackground(ViewHolder... viewHolders) {
-
-            return null;
-        }
-    }
-
-
-    public void ImageViewAnimatedChange(final ImageView v, final Bitmap new_image) {
-        final Animation anim_out = AnimationUtils.loadAnimation(context, android.R.anim.fade_out);
-        final Animation anim_in  = AnimationUtils.loadAnimation(context, android.R.anim.fade_in);
-        anim_out.setAnimationListener(new Animation.AnimationListener()
-        {
-            @Override public void onAnimationStart(Animation animation) {}
-            @Override public void onAnimationRepeat(Animation animation) {}
-            @Override public void onAnimationEnd(Animation animation)
-            {
-                v.setImageBitmap(new_image);
-                anim_in.setAnimationListener(new Animation.AnimationListener() {
-                    @Override public void onAnimationStart(Animation animation) {}
-                    @Override public void onAnimationRepeat(Animation animation) {}
-                    @Override public void onAnimationEnd(Animation animation) {}
-                });
-                v.startAnimation(anim_in);
-            }
-        });
-        v.startAnimation(anim_out);
-    }
 }
