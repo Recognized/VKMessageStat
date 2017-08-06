@@ -1,5 +1,7 @@
 package com.vladsaif.vkmessagestat.adapters;
 
+import android.app.Service;
+import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;

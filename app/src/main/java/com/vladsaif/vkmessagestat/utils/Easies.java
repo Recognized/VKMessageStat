@@ -127,7 +127,7 @@ public class Easies {
             Log.d(LOG_TAG, "picture is loaded");
             return BitmapFactory.decodeFile(photoPath + transformLink(link), options);
         } catch (Exception ex) {
-            Log.d(LOG_TAG, "picture isn't loaded, trying download");
+            Log.d(LOG_TAG, "picture isn't loaded, trying download" + ex.toString());
             return null;
         }
 
@@ -156,7 +156,7 @@ public class Easies {
             return day.format(someDate) + " " +
                     rus_months[Integer.decode(new SimpleDateFormat("M", Locale.ENGLISH).format(someDate))];
         } else return day.format(someDate) + " " +
-                rus_months[Integer.decode(new SimpleDateFormat("M", Locale.ENGLISH).format(someDate))]
+                rus_months[Integer.decode(new SimpleDateFormat("M", Locale.ENGLISH).format(someDate))-1]
                 + " " + new SimpleDateFormat("yyyy", Locale.ENGLISH).format(someDate);
     }
 }

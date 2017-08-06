@@ -11,6 +11,7 @@ import com.vk.sdk.api.VKError;
 import com.vk.sdk.api.VKParameters;
 import com.vk.sdk.api.VKRequest;
 import com.vk.sdk.api.VKResponse;
+import com.vladsaif.vkmessagestat.db.DialogData;
 import com.vladsaif.vkmessagestat.utils.Easies;
 import com.vladsaif.vkmessagestat.utils.Strings;
 import org.json.JSONArray;
@@ -31,7 +32,7 @@ public class VKWorker extends Thread {
     public SparseIntArray existingMessages;
     public SparseIntArray realMessages;
     public SparseIntArray lastMessageIds;
-    public SparseArray<String> dialogIdToName;
+    public SparseArray<DialogData> dialogData;
     public SparseIntArray time;
     public int allMessages;
     public int dialogsCount;
@@ -56,7 +57,7 @@ public class VKWorker extends Thread {
         realMessages = new SparseIntArray();
         lastMessageIds = new SparseIntArray();
         time = new SparseIntArray();
-        dialogIdToName = new SparseArray<>();
+        dialogData = new SparseArray<>();
         allMessages = 0;
         executionCounter = 0;
     }
@@ -146,7 +147,7 @@ public class VKWorker extends Thread {
                     case GET_USERS:
                         VKRequest users = new VKRequest("users.get",
                                 VKParameters.from("user_ids", Easies.join(b.getIntegerArrayList("user_ids")),
-                                "fields", "has_photo,photo_200"));
+                                "fields", "has_photo,photo_100"));
                         users.executeWithListener(getUsersListener);
                         secureMethod = false;
                         break;

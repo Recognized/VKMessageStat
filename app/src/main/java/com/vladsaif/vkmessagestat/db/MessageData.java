@@ -7,13 +7,15 @@ public class MessageData {
     public String message;
     public int date;
     public int dialog_id;
-    public String name;
+    public DialogData data;
+    public int id;
 
-    public MessageData(int dialog_id, String message, int date, String name) {
+    public MessageData(int dialog_id, String message, int date, DialogData data, int id) {
         this.date = date;
         this.dialog_id = dialog_id;
         this.message = message;
-        this.name = name;
+        this.data = data;
+        this.id = id;
     }
 
 

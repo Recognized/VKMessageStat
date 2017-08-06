@@ -62,20 +62,7 @@ public class MainPage extends AppCompatActivity {
         // I don't really know how to check how much memory is available
         // so there is no other way for me except forgetting about this problem
         responses = 0;
-        SharedPreferences sPref = getSharedPreferences(Strings.settings, MODE_PRIVATE);
-        if (!sPref.contains(Strings.external_storage)) {
-            SharedPreferences.Editor edit = sPref.edit();
-            try {
-                File test = new File(getExternalFilesDir(null), "test");
-                OutputStream os = new FileOutputStream(test);
-                Log.d(LOG_TAG, "using external storage");
-                edit.putBoolean(Strings.external_storage, true);
-            } catch (IOException ex) {
-                Log.d(LOG_TAG, "using internal storage");
-                edit.putBoolean(Strings.external_storage, false);
-            }
-            edit.apply();
-        }
+
     }
 
     @Override
@@ -83,6 +70,7 @@ public class MainPage extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_page);
         Toolbar toolbar = (Toolbar) findViewById(R.id.my_toolbar);
+        setSupportActionBar(toolbar);
         mProgress = (ProgressBar) findViewById(R.id.loadingRecycler);
         dbHelper = new DbHelper(getApplicationContext(), "dialogs.db");
         db = dbHelper.getWritableDatabase();
@@ -91,30 +79,7 @@ public class MainPage extends AppCompatActivity {
         access_token = VKAccessToken.currentToken().accessToken;
         mLayoutManager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(mLayoutManager);
-        // TODO correct settings
-        // setting common things
-        SharedPreferences sPref = getSharedPreferences(Strings.settings, MODE_PRIVATE);
-        STAT_MODE stat_mode = STAT_MODE.values()[(sPref.getInt(Strings.stat_mode, 0))];
-        switch (stat_mode) {
-            case SIMPLE:
-                toolbar.setTitle(R.string.simple_stat);
-                break;
-            case ADVANCED:
-                toolbar.setTitle(R.string.advanced_stat);
-        }
-        setSupportActionBar(toolbar);
         token = VKAccessToken.tokenFromSharedPreferences(getApplication(), Strings.access_token);
-        goAdvanced = (Button) findViewById(R.id.button);
-        goAdvanced.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(getApplicationContext(), MessagesCollectorNew.class);
-                intent.putExtra(Strings.commandType, Strings.commandDump);
-                startService(intent);
-                Intent openProgress = new Intent(getApplicationContext(), LoadingActivity.class);
-                startActivity(openProgress);
-            }
-        });
         (new PrepareThreads()).execute();
     }
 

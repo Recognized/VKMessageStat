@@ -120,7 +120,7 @@ public class Dumper extends Thread {
                     case VKWorker.FINISH_GET_MESSAGES:
                         if (process.doWork((VKResponse) msg.obj, msg.arg1, msg.arg2) < 0) {
                             if (!queue.isEmpty()) {
-                                nextDialog.call(queue.getFirst());
+                                nextDialog.call(queue.removeFirst());
                             } else {
                                 Log.d(LOG_TAG, "Queue is empty");
                                 onFinishMessages.run();
@@ -129,7 +129,7 @@ public class Dumper extends Thread {
                         break;
                     case VKWorker.BEGIN_COLLECTING:
                         if (!queue.isEmpty()) {
-                            nextDialog.call(queue.getFirst());
+                            nextDialog.call(queue.removeFirst());
                         } else {
                             Log.d(LOG_TAG, "begin collecting");
                             onFinishMessages.run();

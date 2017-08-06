@@ -22,7 +22,7 @@
     <string name="advanced_stat">Расширенная статистика</string>
     <string name="download_title">Загрузка сообщений</string>
     <string name="download_title_completed">Загрузка завершена</string>
-    <string name="download_text">пусто</string>
+    <string name="download_text">Пожалуйста, подождите</string>
     <string name="download_text_completed">Нажмите, чтобы перейти к просмотру статистики</string>
     <string name="message_count">Кол-во сообщений</string>
     <string name="symbols_count">Кол-во символов</string>

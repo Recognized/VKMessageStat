@@ -3,8 +3,10 @@ package com.vladsaif.vkmessagestat.ui;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -15,11 +17,17 @@ import com.vk.sdk.VKSdk;
 import com.vk.sdk.api.VKApiConst;
 import com.vk.sdk.api.VKError;
 import com.vladsaif.vkmessagestat.R;
+import com.vladsaif.vkmessagestat.services.MessagesCollectorNew;
 import com.vladsaif.vkmessagestat.ui.MainPage;
 import com.vladsaif.vkmessagestat.utils.Strings;
 
-public class LoginActivity extends AppCompatActivity {
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 
+public class LoginActivity extends AppCompatActivity {
+    public final String LOG_TAG = LoadingActivity.class.getSimpleName();
     private Button login;
     private TextView error;
 
@@ -28,7 +36,21 @@ public class LoginActivity extends AppCompatActivity {
         super.onStart();
         VKAccessToken token = VKAccessToken.tokenFromSharedPreferences(getApplication(), Strings.access_token);
         if (token != null) {
-            startActivity(new Intent(this, MainPage.class));
+            SharedPreferences sPref = getSharedPreferences(Strings.settings, MODE_PRIVATE);
+            if (!sPref.contains(Strings.external_storage)) {
+                SharedPreferences.Editor edit = sPref.edit();
+                try {
+                    File test = new File(getExternalFilesDir(null), "test");
+                    OutputStream os = new FileOutputStream(test);
+                    Log.d(LOG_TAG, "using external storage");
+                    edit.putBoolean(Strings.external_storage, true);
+                } catch (IOException ex) {
+                    Log.d(LOG_TAG, "using internal storage");
+                    edit.putBoolean(Strings.external_storage, false);
+                }
+                edit.apply();
+            }
+            nextActivity(sPref);
         }
     }
 
@@ -56,7 +78,7 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onResult(VKAccessToken res) {
                 res.saveTokenToSharedPreferences(getApplication(), Strings.access_token);
-                startActivity(new Intent(getApplicationContext(), MainPage.class));
+                nextActivity(getSharedPreferences(Strings.settings, MODE_PRIVATE));
             }
             @Override
             public void onError(VKError er) {
@@ -65,6 +87,19 @@ public class LoginActivity extends AppCompatActivity {
             }
         })) {
             super.onActivityResult(requestCode, resultCode, data);
+        }
+    }
+
+    public void nextActivity(SharedPreferences sPref) {
+        boolean advanced_stat = sPref.getBoolean(Strings.stat_mode, false);
+        if(!advanced_stat) {
+            Intent intent = new Intent(getApplicationContext(), MessagesCollectorNew.class);
+            intent.putExtra(Strings.commandType, Strings.commandDump);
+            startService(intent);
+            Intent openProgress = new Intent(getApplicationContext(), LoadingActivity.class);
+            startActivity(openProgress);
+        } else {
+            startActivity(new Intent(this, MainPage.class));
         }
     }
 }
