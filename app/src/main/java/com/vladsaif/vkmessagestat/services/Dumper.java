@@ -1,23 +1,20 @@
 package com.vladsaif.vkmessagestat.services;
 
 
-import android.os.Bundle;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
-import android.provider.ContactsContract;
 import android.util.Log;
 import com.vk.sdk.api.VKResponse;
-import com.vladsaif.vkmessagestat.utils.Strings;
 
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.Queue;
 
 
-public class Dumper extends Thread {
+public class Dumper extends HandlerThread {
     public final String LOG_TAG = Dumper.class.getSimpleName();
+    private final Handler callback;
     public Handler dumper;
     private Handler uiHandler;
     public int expect_count;
@@ -85,7 +82,8 @@ public class Dumper extends Thread {
         this.queue = queue;
     }
 
-    public Dumper() {
+    public Dumper(Handler callback) {
+        super("Dumper");
         current_count = 0;
         current_last = 0;
         current_messages = 0;
@@ -93,6 +91,7 @@ public class Dumper extends Thread {
         gotGroups = false;
         gotDialogs = false;
         uiHandler = new Handler(Looper.getMainLooper());
+        this.callback = callback;
     }
 
     @Override
@@ -162,8 +161,15 @@ public class Dumper extends Thread {
                 }
             }
         };
-
+        Message m = callback.obtainMessage();
+        m.what = PreparedThreads.DUMPER_STARTED;
+        callback.sendMessage(m);
+        Log.d(LOG_TAG, "Dumper inner before loop");
         Looper.loop();
+    }
+
+    public synchronized void waitUntilReady() {
+        getLooper();
     }
 
     private void resetDialogsFlags() {

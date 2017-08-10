@@ -2,23 +2,34 @@ package com.vladsaif.vkmessagestat.utils;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.TypedArray;
 import android.graphics.*;
+import android.text.TextUtils;
+import android.util.AttributeSet;
+import android.util.Log;
+import android.util.SparseArray;
+import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
+import android.widget.TextView;
+import com.vladsaif.vkmessagestat.db.DialogData;
 
-import java.io.File;
+import java.io.*;
+import java.lang.ref.SoftReference;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Hashtable;
 import java.util.Locale;
 
 public class Easies {
-    public enum DIALOG_TYPE {USER, CHAT, COMMUNITY}
 
+
+    public enum DIALOG_TYPE {USER, CHAT, COMMUNITY;}
     private static final String LOG_TAG = "Utils.Easies";
-    public static String[] rus_months = new String[]{"янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"};
 
+    public static String[] rus_months = new String[]{"янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"};
     // Use only for avatar's of users
     public static Bitmap getCircleBitmap(Bitmap source) {
         if (source == null) {
@@ -79,11 +90,27 @@ public class Easies {
     }
 
     public static String getPhotosPath(Context context) {
-        return getAppAbsolutePath(context) + Strings.photos + File.separator;
+        File f = new File(getAppAbsolutePath(context) + Strings.photos + File.separator);
+        f.mkdirs();
+        return f.getAbsolutePath() + File.separator;
     }
 
     public static String getDatabasesPath(Context context) {
-        return getAppAbsolutePath(context) + Strings.databases + File.separator;
+        File f = new File(getAppAbsolutePath(context) + Strings.databases + File.separator);
+        f.mkdirs();
+        return f.getAbsolutePath() + File.separator;
+    }
+
+    public static String getTextDataPath(Context context) {
+        File f = new File(getAppAbsolutePath(context) + Strings.textdata + File.separator);
+        f.mkdirs();
+        return f.getAbsolutePath() + File.separator;
+    }
+
+    public static String getSerializablePath(Context context) {
+        File f = new File(getAppAbsolutePath(context) + "objects" + File.separator);
+        f.mkdirs();
+        return f.getAbsolutePath() + File.separator;
     }
 
     public static DIALOG_TYPE resolveType(String s) {
@@ -118,7 +145,7 @@ public class Easies {
             return "вчера";
         } else if (year.format(currentDate).equals(year.format(someDate))) {
             return day.format(someDate) + " " +
-                    rus_months[Integer.decode(new SimpleDateFormat("M", Locale.ENGLISH).format(someDate))];
+                    rus_months[Integer.decode(new SimpleDateFormat("M", Locale.ENGLISH).format(someDate)) - 1];
         } else return day.format(someDate) + " " +
                 rus_months[Integer.decode(new SimpleDateFormat("M", Locale.ENGLISH).format(someDate))-1]
                 + " " + new SimpleDateFormat("yyyy", Locale.ENGLISH).format(someDate);
@@ -156,5 +183,96 @@ public class Easies {
             }
         });
         v.startAnimation(anim_out);
+    }
+
+    public static void setCustomFont(View textViewOrButton, Context ctx, AttributeSet attrs, int[] attributeSet, int fontId) {
+        TypedArray a = ctx.obtainStyledAttributes(attrs, attributeSet);
+        String customFont = a.getString(fontId);
+        setCustomFont(textViewOrButton, ctx, customFont);
+        a.recycle();
+    }
+
+    public static boolean setMonospaceFont(TextView view, Context context) {
+        return setCustomFont(view, context, "mono.ttf");
+    }
+
+    private static boolean setCustomFont(View textView, Context ctx, String asset) {
+        if (TextUtils.isEmpty(asset))
+            return false;
+        Typeface tf = null;
+        try {
+            tf = getFont(ctx, asset);
+            if (textView instanceof TextView) {
+                ((TextView) textView).setTypeface(tf);
+            }
+        } catch (Exception e) {
+            Log.e(LOG_TAG, "Could not get typeface: " + asset, e);
+            return false;
+        }
+
+        return true;
+    }
+
+    private static final Hashtable<String, SoftReference<Typeface>> fontCache = new Hashtable<String, SoftReference<Typeface>>();
+
+    public static Typeface getFont(Context c, String name) {
+        synchronized (fontCache) {
+            if (fontCache.get(name) != null) {
+                SoftReference<Typeface> ref = fontCache.get(name);
+                if (ref.get() != null) {
+                    return ref.get();
+                }
+            }
+
+            Typeface typeface = Typeface.createFromAsset(
+                    c.getAssets(),
+                    "fonts/" + name
+            );
+            fontCache.put(name, new SoftReference<Typeface>(typeface));
+
+            return typeface;
+        }
+    }
+
+    public static String fileName = "dialogData.out";
+
+    public static SparseArray<DialogData> deserializeData(Context context) {
+        File dialogDataFile = new File(Easies.getSerializablePath(context) + fileName);
+        ArrayList<DialogData> prevDialogData = null;
+        if (dialogDataFile.exists()) {
+            try {
+                ObjectInputStream inputStream = new ObjectInputStream(new FileInputStream(dialogDataFile));
+                prevDialogData = (ArrayList<DialogData>) inputStream.readObject();
+                inputStream.close();
+            } catch (IOException ex) {
+                Log.wtf(LOG_TAG, ex);
+            } catch (ClassNotFoundException cnfe) {
+                Log.wtf(LOG_TAG, cnfe);
+            }
+        } else {
+            return new SparseArray<>();
+        }
+        SparseArray<DialogData> ans = new SparseArray<>();
+        for (DialogData d : prevDialogData) {
+            if (d != null) ans.put(d.dialog_id, d);
+        }
+        return ans;
+    }
+
+    public static void serializeData(SparseArray<DialogData> data, Context context) {
+        ArrayList<DialogData> ser = new ArrayList<>();
+        for (int i = 0; i < data.size(); ++i) {
+            ser.add(data.valueAt(i));
+        }
+        try {
+            File dialogDataFile = new File(Easies.getSerializablePath(context) + fileName);
+            if (dialogDataFile.exists()) Log.d(LOG_TAG, "File exists");
+            ObjectOutputStream outputStream = new ObjectOutputStream(new FileOutputStream(dialogDataFile));
+            outputStream.writeObject(ser);
+            outputStream.flush();
+            outputStream.close();
+        } catch (IOException ex) {
+            Log.wtf(LOG_TAG, ex);
+        }
     }
 }

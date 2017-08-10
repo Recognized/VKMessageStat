@@ -30,6 +30,25 @@ public class LoginActivity extends AppCompatActivity {
     private TextView error;
 
     @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (!VKSdk.onActivityResult(requestCode, resultCode, data, new VKCallback<VKAccessToken>() {
+            @Override
+            public void onResult(VKAccessToken res) {
+                res.saveTokenToSharedPreferences(getApplication(), Strings.access_token);
+                nextActivity(getSharedPreferences(Strings.settings, MODE_PRIVATE));
+            }
+
+            @Override
+            public void onError(VKError er) {
+                // Произошла ошибка авторизации (например, пользователь запретил авторизацию)
+                error.setVisibility(View.VISIBLE);
+            }
+        })) {
+            super.onActivityResult(requestCode, resultCode, data);
+        }
+    }
+
+    @Override
     protected void onStart() {
         super.onStart();
         VKAccessToken token = VKAccessToken.tokenFromSharedPreferences(getApplication(), Strings.access_token);
@@ -68,24 +87,6 @@ public class LoginActivity extends AppCompatActivity {
 
         error = (TextView) findViewById(R.id.auth_error);
         error.setVisibility(View.GONE);
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (!VKSdk.onActivityResult(requestCode, resultCode, data, new VKCallback<VKAccessToken>() {
-            @Override
-            public void onResult(VKAccessToken res) {
-                res.saveTokenToSharedPreferences(getApplication(), Strings.access_token);
-                nextActivity(getSharedPreferences(Strings.settings, MODE_PRIVATE));
-            }
-            @Override
-            public void onError(VKError er) {
-                // Произошла ошибка авторизации (например, пользователь запретил авторизацию)
-                error.setVisibility(View.VISIBLE);
-            }
-        })) {
-            super.onActivityResult(requestCode, resultCode, data);
-        }
     }
 
     public void nextActivity(SharedPreferences sPref) {

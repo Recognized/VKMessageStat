@@ -1,9 +1,7 @@
 package com.vladsaif.vkmessagestat.services;
 
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
+import android.content.Context;
+import android.os.*;
 import android.util.Log;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
@@ -22,16 +20,16 @@ import java.util.ArrayList;
 import java.util.Date;
 
 // Singleton
-public class VKWorker extends Thread {
+public class VKWorker extends HandlerThread {
     private final String LOG_TAG = VKWorker.class.getSimpleName();
     private final long fixedDelay = 334;
+    private final Handler callback;
     private Handler dumper;
     public Handler mHandler;
     public String access_token;
-    public SparseIntArray existingMessages;
     public SparseIntArray realMessages;
-    public SparseIntArray lastMessageIds;
     public SparseArray<DialogData> dialogData;
+    public SparseArray<DialogData> prevDialogData;
     public SparseIntArray time;
     public int allMessages;
     public int dialogsCount;
@@ -43,21 +41,23 @@ public class VKWorker extends Thread {
     public static final int GET_GROUPS = 6;
     public static final int BEGIN_COLLECTING = 101;
     public static final int FINISH_GET_LAST = 1001;
-    public static final int FINISH_GET_COUNT  = 1002;
+    public static final int FINISH_GET_COUNT = 1002;
     public static final int FINISH_GET_MESSAGES = 1003;
     public static final int FINISH_GET_DIALOGS = 1004;
     public static final int FINISH_GET_USERS = 1005;
     public static final int FINISH_GET_GROUPS = 1006;
 
-    public VKWorker(Handler dumper, String access_token) {
+    public VKWorker(Handler dumper, String access_token, Handler callback, Context context) {
+        super("VKWorker");
         this.dumper = dumper;
         this.access_token = access_token;
-        existingMessages = new SparseIntArray();
         realMessages = new SparseIntArray();
-        lastMessageIds = new SparseIntArray();
         time = new SparseIntArray();
         dialogData = new SparseArray<>();
+        prevDialogData = Easies.deserializeData(context);
+        dialogData = this.prevDialogData.clone();
         allMessages = 0;
+        this.callback = callback;
     }
 
     private ListenerWithError getCountListener = new ListenerWithError() {
@@ -107,7 +107,6 @@ public class VKWorker extends Thread {
                 final Bundle b = msg.getData();
                 Log.d(LOG_TAG, Long.toString(new Date().getTime()));
                 Log.d(LOG_TAG, Integer.toString(msg.what));
-                boolean secureMethod = true;
                 switch (msg.what) {
                     case GET_COUNT:
                         VKRequest req = new VKRequest("execute.getCount",
@@ -145,30 +144,28 @@ public class VKWorker extends Thread {
                     case GET_USERS:
                         VKRequest users = new VKRequest("users.get",
                                 VKParameters.from("user_ids", Easies.join(b.getIntegerArrayList("user_ids")),
-                                "fields", "has_photo,photo_100"));
+                                        "fields", "has_photo,photo_100"));
                         users.executeWithListener(getUsersListener);
-                        secureMethod = false;
                         break;
                     case GET_GROUPS:
                         VKRequest groups = new VKRequest("groups.getById",
                                 VKParameters.from("group_ids", Easies.join(b.getIntegerArrayList("group_ids"))));
                         groups.executeWithListener(getGroupsListener);
-                        secureMethod = false;
                         break;
                 }
-                if(secureMethod) {
-                    synchronized (VKWorker.this) {
-                        try {
-                            VKWorker.this.wait(fixedDelay);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
+                synchronized (VKWorker.this) {
+                    try {
+                        VKWorker.this.wait(fixedDelay);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
                     }
                 }
 
             }
         };
-
+        Message m = callback.obtainMessage();
+        m.what = PreparedThreads.WORKER_STARTED;
+        callback.sendMessage(m);
         Looper.loop();
     }
 
@@ -176,6 +173,7 @@ public class VKWorker extends Thread {
 
         @Override
         public void onError(VKError error) {
+            super.onError(error);
             throw new RuntimeException(error.toString());
         }
 
@@ -195,7 +193,7 @@ public class VKWorker extends Thread {
             JSONArray array = response.json.getJSONArray("response");
             for (int i = 0; i < array.length(); ++i) {
                 JSONObject obj = array.getJSONObject(i);
-                lastMessageIds.put(obj.getInt("peer_id"), obj.getInt("id"));
+                dialogData.get(obj.getInt("peer_id")).lastMessageId = obj.getInt("id");
             }
         } catch (JSONException ex) {
             throw new RuntimeException("Not expected. " + ex.toString());
@@ -210,7 +208,7 @@ public class VKWorker extends Thread {
                 int peer = obj.getInt("peer_id");
                 int count = obj.getInt("count");
                 realMessages.put(peer, count);
-                allMessages += count - existingMessages.get(peer);
+                allMessages += count - dialogData.get(peer).messages;
             }
         } catch (JSONException ex) {
             throw new RuntimeException("Not expected. " + ex.toString());

@@ -1,108 +1,80 @@
 package com.vladsaif.vkmessagestat.adapters;
 
 import android.content.Context;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
-import android.os.Message;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.util.SparseArray;
+import android.util.SparseIntArray;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import com.vladsaif.vkmessagestat.R;
-import com.vladsaif.vkmessagestat.db.DbHelper;
 import com.vladsaif.vkmessagestat.db.DialogData;
-import com.vladsaif.vkmessagestat.services.VKWorker;
-import com.vladsaif.vkmessagestat.ui.MainPage;
 import com.vladsaif.vkmessagestat.utils.CacheFile;
 import com.vladsaif.vkmessagestat.utils.Easies;
 import com.vladsaif.vkmessagestat.utils.SetImageBase;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Locale;
 
 public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHolder> {
 
     private static final String here = "adapter";
-    private final SQLiteDatabase db;
     private SparseArray<DialogData> data;
+    private ArrayList<DialogData> dialogDataSortedByDate;
     private ArrayList<Integer> positionToId;
-    private MainPage context;
+    private SparseIntArray positionByMessages;
+    private SparseIntArray positionBySymbols;
+    private Context context;
     private int currentLoadedDialogs;
     private final int fixedCount = 200;
     boolean sent = false;
     private final LinearLayoutManager linearLayoutManager;
 
-    public DialogsAdapter(final DbHelper helper, MainPage context, LinearLayoutManager ll) {
+    public DialogsAdapter(Context context, LinearLayoutManager ll) {
         this.context = context;
         linearLayoutManager = ll;
-        data = new SparseArray<>();
-        positionToId = new ArrayList<>();
-        db = helper.getWritableDatabase();
-        fetchData();
-        currentLoadedDialogs = positionToId.size();
-        context.dumper.setOnFinishGetDialogs(fetchNewData);
+        data = Easies.deserializeData(context);
+        dialogDataSortedByDate = new ArrayList<>();
+        for (int i = 0; i < data.size(); ++i) {
+            dialogDataSortedByDate.add(data.valueAt(i));
+        }
+        Collections.sort(dialogDataSortedByDate, new Comparator<DialogData>() {
+            @Override
+            public int compare(DialogData dialogData, DialogData t1) {
+                return t1.date - dialogData.date;
+            }
+        });
+        ArrayList<DialogData> sortedByMessage = new ArrayList<>(dialogDataSortedByDate);
+        Collections.sort(sortedByMessage, new Comparator<DialogData>() {
+            @Override
+            public int compare(DialogData dialogData, DialogData t1) {
+                return (int) (t1.messages - dialogData.messages);
+            }
+        });
+        ArrayList<DialogData> sortedBySymbols = new ArrayList<>(dialogDataSortedByDate);
+        Collections.sort(sortedBySymbols, new Comparator<DialogData>() {
+            @Override
+            public int compare(DialogData dialogData, DialogData t1) {
+                return (int) (t1.symbols - dialogData.symbols);
+            }
+        });
+        positionByMessages = new SparseIntArray();
+        for (int i = 0; i < sortedByMessage.size(); ++i) {
+            positionByMessages.put(sortedByMessage.get(i).dialog_id, i + 1);
+        }
+        positionBySymbols = new SparseIntArray();
+        for (int i = 0; i < sortedBySymbols.size(); ++i) {
+            positionBySymbols.put(sortedBySymbols.get(i).dialog_id, i + 1);
+        }
     }
-
-    public void fetchData() {
-        Cursor dialogs = db.rawQuery("SELECT dialog_id, type, date FROM dialogs ORDER BY date DESC;", new String[]{});
-        Log.d(here, "count " + Integer.toString(dialogs.getCount()));
-        positionToId = new ArrayList<>();
-        if (dialogs.moveToFirst()) {
-            do {
-                Integer id = dialogs.getInt(dialogs.getColumnIndex("dialog_id"));
-                positionToId.add(id);
-                String type = dialogs.getString(dialogs.getColumnIndex("type"));
-                data.put(id, new DialogData(id, Easies.resolveType(type)));
-            } while (dialogs.moveToNext());
-        }
-        dialogs.close();
-
-        Cursor names = db.rawQuery("SELECT dialog_id,name FROM names;", new String[]{});
-        if (names.moveToFirst()) {
-            do {
-                Integer id = names.getInt(names.getColumnIndex("dialog_id"));
-                data.get(id).name = names.getString(names.getColumnIndex("name"));
-                Log.d("names", data.get(id).name);
-            } while (names.moveToNext());
-        }
-        names.close();
-
-        Cursor pictures = db.rawQuery("SELECT dialog_id, link FROM pictures;", new String[]{});
-        if (pictures.moveToFirst()) {
-            do {
-                Integer id = pictures.getInt(pictures.getColumnIndex("dialog_id"));
-                data.get(id).link = pictures.getString(pictures.getColumnIndex("link"));
-            } while (pictures.moveToNext());
-        }
-        pictures.close();
-
-        Cursor counts = db.rawQuery("SELECT dialog_id, counter FROM counts;", new String[]{});
-        if(counts.moveToFirst()) {
-            do {
-                Integer id = counts.getInt(counts.getColumnIndex("dialog_id"));
-                data.get(id).messages = counts.getInt(counts.getColumnIndex("counter"));
-            } while (counts.moveToNext());
-        }
-        counts.close();
-    }
-
-    private Runnable fetchNewData =  new Runnable() {
-        @Override
-        public void run() {
-            Log.d("does it happen", "null");
-            sent = false;
-            fetchData();
-            currentLoadedDialogs = data.size();
-            notifyDataSetChanged();
-        }
-    };
 
     @Override
     public DialogsAdapter.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
@@ -115,16 +87,31 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
     @Override
     public void onBindViewHolder(DialogsAdapter.ViewHolder holder, int position) {
         Log.d(here, "onBindViewHolder");
-        Integer dialog_id = positionToId.get(position);
+        DialogData thisData = dialogDataSortedByDate.get(position);
         holder.position = position;
-        holder.title.setText(data.get(dialog_id).name);
-        holder.scounter.setText("-");
-        String link = data.get(dialog_id).link;
-        CacheFile.setDefaultImage(holder.avatar, data.get(dialog_id).type, context);
-        (new SetImage(holder, position, context)).execute(link);
+        holder.title.setText(thisData.name);
+        holder.scounter.setText(String.format(Locale.ENGLISH, "%d / %d", thisData.out_symbols, thisData.symbols));
+        holder.mcounter.setText(String.format(Locale.ENGLISH, "%d / %d", thisData.out, thisData.messages));
+        holder.acounter.setText(String.format(Locale.ENGLISH, "%d", thisData.audios + thisData.videos
+                + thisData.walls + thisData.pictures));
+        holder.sposition.setText(String.format(Locale.ENGLISH, "%d", positionBySymbols.get(thisData.dialog_id)));
+        holder.mposition.setText(String.format(Locale.ENGLISH, "%d", positionByMessages.get(thisData.dialog_id)));
+        holder.dateview.setText(Easies.dateToHumanReadable(thisData.date));
+
+        if (SetImage.cached.get(thisData.link) == null) {
+            Bitmap fromMemory = CacheFile.loadPic(thisData.link, context);
+            if (fromMemory == null) {
+                CacheFile.setDefaultImage(holder.avatar, thisData.type, context);
+                (new SetImage(holder, position, context)).execute(thisData.link);
+            } else {
+                holder.avatar.setImageBitmap(fromMemory);
+            }
+        } else {
+            holder.avatar.setImageBitmap(SetImage.cached.get(thisData.link));
+        }
     }
 
-    public RecyclerView.OnScrollListener scrolling = new RecyclerView.OnScrollListener() {
+    /*public RecyclerView.OnScrollListener scrolling = new RecyclerView.OnScrollListener() {
         @Override
         public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
             super.onScrolled(recyclerView, dx, dy);
@@ -135,12 +122,12 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
                 Message m = context.requestHandler.obtainMessage();
                 m.what = VKWorker.GET_DIALOGS;
                 m.arg1 = fixedCount;
-                m.arg2 =  currentLoadedDialogs + 1;
+                m.arg2 = currentLoadedDialogs + 1;
                 context.requestHandler.sendMessage(m);
                 sent = true;
             }
         }
-    };
+    };*/
 
     @Override
     public int getItemCount() {
@@ -152,8 +139,12 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
         public LinearLayout layout;
         public ImageView avatar;
         public TextView title;
-        public ProgressBar mcounter;
+        public TextView mcounter;
         public TextView scounter;
+        public TextView acounter;
+        public TextView mposition;
+        public TextView sposition;
+        public TextView dateview;
         public int position;
 
         public ViewHolder(View v) {
@@ -161,8 +152,12 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
             layout = (LinearLayout) v;
             avatar = layout.findViewById(R.id.main_page_avatar);
             title = layout.findViewById(R.id.dialog_title);
-            mcounter = layout.findViewById(R.id.progressBar2);
-            scounter = layout.findViewById(R.id.scounter);
+            mcounter = layout.findViewById(R.id.messages_count);
+            scounter = layout.findViewById(R.id.symbols_count);
+            acounter = layout.findViewById(R.id.attachments_count);
+            mposition = layout.findViewById(R.id.message_position);
+            sposition = layout.findViewById(R.id.symbols_position);
+            dateview = layout.findViewById(R.id.date);
         }
     }
 

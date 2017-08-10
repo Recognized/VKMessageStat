@@ -1,5 +1,6 @@
 package com.vladsaif.vkmessagestat.ui;
 
+import android.animation.LayoutTransition;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -12,10 +13,8 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.ProgressBar;
-import android.widget.TextView;
+import android.view.ViewGroup;
+import android.widget.*;
 import com.vladsaif.vkmessagestat.R;
 import com.vladsaif.vkmessagestat.db.MessageData;
 import com.vladsaif.vkmessagestat.services.MessagesCollectorNew;
@@ -32,6 +31,12 @@ public class LoadingActivity extends AppCompatActivity {
     private LinearLayout messageContainer;
     private int currentCounter;
     private int prevId = -1;
+    private View message;
+    private TextView content;
+    private TextView name;
+    private TextView date;
+    private ImageView avatar;
+    private LinearLayout estimateProgressBar;
 
     private ServiceConnection sConn = new ServiceConnection() {
         private MessagesCollectorNew.Progress mBinder;
@@ -48,11 +53,10 @@ public class LoadingActivity extends AppCompatActivity {
             public void run() {
                 MessageData data = mBinder.getSomeMessage();
                 if(data != null && data.id != prevId) {
+                    messageContainer.setVisibility(View.VISIBLE);
+                    estimateProgressBar.setVisibility(View.GONE);
                     prevId = data.id;
                     Log.d(LOG_TAG, "Data isn't null");
-                    messageContainer.removeAllViewsInLayout();
-                    View message = LayoutInflater.from(messageContainer.getContext())
-                            .inflate(R.layout.message, messageContainer, true);
                     fillData(data, message);
                 }
                 handler.postDelayed(refreshMessage, periodMessage);
@@ -61,6 +65,13 @@ public class LoadingActivity extends AppCompatActivity {
         @Override
         public void onServiceConnected(ComponentName componentName, final IBinder iBinder) {
             mBinder = (MessagesCollectorNew.Progress) iBinder;
+            if (mBinder.getEstimatingState()) {
+                messageContainer.setVisibility(View.GONE);
+                estimateProgressBar.setVisibility(View.VISIBLE);
+            } else {
+                messageContainer.setVisibility(View.VISIBLE);
+                estimateProgressBar.setVisibility(View.GONE);
+            }
             handler.post(refreshMessage);
             handler.post(refreshProgress);
         }
@@ -72,15 +83,20 @@ public class LoadingActivity extends AppCompatActivity {
     };
 
     private void fillData(MessageData messageData, View v) {
-        TextView content = v.findViewById(R.id.content);
         content.setText(messageData.message);
-        TextView name = v.findViewById(R.id.dialog_title);
         name.setText(messageData.data.name);
-        TextView date = v.findViewById(R.id.time);
         date.setText(Easies.dateToHumanReadable(messageData.date));
-        ImageView avatar = v.findViewById(R.id.main_page_avatar);
-        CacheFile.setDefaultImage(avatar, messageData.data.type, this);
-        (new SetImage(avatar, ++currentCounter, this)).execute(messageData.data.link);
+        if (SetImage.cached.get(messageData.data.link) == null) {
+            Bitmap fromMemory = CacheFile.loadPic(messageData.data.link, this);
+            if (fromMemory == null) {
+                CacheFile.setDefaultImage(avatar, messageData.data.type, this);
+                (new SetImage(avatar, ++currentCounter, this)).execute(messageData.data.link);
+            } else {
+                avatar.setImageBitmap(fromMemory);
+            }
+        } else {
+            avatar.setImageBitmap(SetImage.cached.get(messageData.data.link));
+        }
     }
 
     class SetImage extends SetImageBase {
@@ -93,10 +109,10 @@ public class LoadingActivity extends AppCompatActivity {
             this.counter = counter;
         }
         @Override
-        protected void onPostExecute(Bitmap bitmap) {
-            if(bitmap != null && currentCounter == counter) {
+        protected void onPostExecute(Bitmap result) {
+            if (result != null && currentCounter == counter) {
                 Log.d(LOG_TAG, "image has been set");
-                Easies.imageViewAnimatedChange(view, bitmap, context);
+                Easies.imageViewAnimatedChange(view, result, context);
             }
         }
     }
@@ -107,13 +123,25 @@ public class LoadingActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_loading);
         currentCounter = 0;
-        android.support.v7.widget.Toolbar toolbar = (android.support.v7.widget.Toolbar) findViewById(R.id.toolbar);
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         toolbar.setTitle(getString(R.string.download_title));
-        setSupportActionBar(toolbar);
+        setActionBar(toolbar);
         handler = new Handler();
         progressBar = (ProgressBar) findViewById(R.id.progressBar);
         messageContainer = (LinearLayout) findViewById(R.id.message_container);
+        messageContainer.setVisibility(View.GONE);
+        message = LayoutInflater.from(messageContainer.getContext())
+                .inflate(R.layout.message, messageContainer, true);
+        content = message.findViewById(R.id.content);
+        name = message.findViewById(R.id.dialog_title);
+        date = message.findViewById(R.id.time);
+        avatar = message.findViewById(R.id.main_page_avatar);
+        estimateProgressBar = (LinearLayout) findViewById(R.id.estimate_download);
         bindService(new Intent(getApplicationContext(), MessagesCollectorNew.class), sConn, 0);
+        ViewGroup notToolbar = (ViewGroup) findViewById(R.id.not_toolbar);
+        LayoutTransition layoutTransition = notToolbar.getLayoutTransition();
+        layoutTransition.enableTransitionType(LayoutTransition.CHANGING);
+        layoutTransition.setStartDelay(LayoutTransition.CHANGE_DISAPPEARING, 0);
     }
 
     @Override

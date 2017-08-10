@@ -24,10 +24,7 @@ public class CacheFile {
         options.inPreferredConfig = Bitmap.Config.ARGB_8888;
     }
 
-
     public static Bitmap loadBitmap(String link, Context context) {
-        Bitmap image = loadPic(link, options, context.getApplicationContext());
-        if (image == null) {
             Bitmap bitmap;
             if (!link.equals("no_photo")) {
                 try {
@@ -42,12 +39,9 @@ public class CacheFile {
                 bitmap = null;
             }
             return bitmap;
-        } else {
-            return image;
-        }
     }
 
-    public static Bitmap loadPic(String link, BitmapFactory.Options options, Context context) {
+    public static Bitmap loadPic(String link, Context context) {
         String photoPath = Easies.getPhotosPath(context);
         File folder = new File(photoPath);
         folder.mkdirs();

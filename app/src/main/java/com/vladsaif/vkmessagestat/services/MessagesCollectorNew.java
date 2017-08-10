@@ -3,33 +3,37 @@ package com.vladsaif.vkmessagestat.services;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
-import android.content.*;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.*;
 import android.support.v7.app.NotificationCompat;
 import android.util.Log;
+import android.util.SparseArray;
 import com.vk.sdk.VKAccessToken;
 import com.vk.sdk.api.VKResponse;
 import com.vladsaif.vkmessagestat.R;
-import com.vladsaif.vkmessagestat.db.DbHelper;
 import com.vladsaif.vkmessagestat.db.DialogData;
 import com.vladsaif.vkmessagestat.db.MessageData;
 import com.vladsaif.vkmessagestat.ui.LoadingActivity;
 import com.vladsaif.vkmessagestat.ui.MainPage;
+import com.vladsaif.vkmessagestat.utils.DataManager;
 import com.vladsaif.vkmessagestat.utils.Easies;
 import com.vladsaif.vkmessagestat.utils.Strings;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
 
+import static com.vladsaif.vkmessagestat.utils.Easies.deserializeData;
+import static com.vladsaif.vkmessagestat.utils.Easies.serializeData;
+
 public class MessagesCollectorNew extends Service {
-    private static final int fixedDelayMs = 1000;
     private static final String LOG_TAG = "MyService";
-    private DbHelper dbHelper;
-    private SQLiteDatabase db;
     private final int NOTIFICATION_ID = 42;
     private final int packSize = 25 * 199;
     private String access_token;
@@ -37,66 +41,35 @@ public class MessagesCollectorNew extends Service {
     private NotificationCompat.Builder mBuilder;
     private int progress;
     private MessageData currentMessageData;
+    private PreparedThreads preparedThreads;
     private VKWorker worker;
     private Dumper dumper;
     private Handler requestHandler;
     private Handler dataHandler;
-    private ArrayList<Integer> peers;
     private ArrayList<Integer> dialogs;
-    private int currentOffset;
-    private int messageId;
+    private int currentOffset = 0;
+    private int messageId = 0;
+    private DataManager dataManager;
+    private boolean estimating = true;
+    private Runnable handlersDereference = new Runnable() {
+        @Override
+        public void run() {
+            worker = preparedThreads.worker;
+            dumper = preparedThreads.dumper;
+            requestHandler = preparedThreads.requestHandler;
+            dataHandler = preparedThreads.dataHandler;
+        }
+    };
 
     @Override
     public void onCreate() {
         super.onCreate();
-        dumper = new Dumper();
-        dumper.start();
-        messageId = 0;
-        while (dumper.dumper == null) ;
-        worker = new VKWorker(dumper.dumper, access_token);
-        worker.start();
-        while (worker.mHandler == null) ;
-        requestHandler = worker.mHandler;
-        dataHandler = dumper.dumper;
-        dataHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                dbHelper = new DbHelper(getApplicationContext(), "dialogs.db");
-                db = dbHelper.getWritableDatabase();
-                debugDrop(db);
-            }
-        });
-        dataHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                dumper.setOnFinishCount(getLastMessageIds);
-                dumper.setOnFinishLast(collectMessages);
-                dumper.setOnFinishMessages(finishWork);
-                dumper.setOnFinishGetDialogs(new Runnable() {
-                    @Override
-                    public void run() {
-                        if(currentOffset < worker.dialogsCount) {
-                            getDialogsFromVK.run();
-                        } else {
-                            dataHandler.post(getDialogs);
-                            dataHandler.post(estimateDownload);
-                        }
-                    }
-                });
-                dumper.setWhenGotDialogs(whenGotDialogs);
-                dumper.setWhenGotGroups(whenGotGroups);
-                dumper.setWhenGotUsers(whenGotUsers);
-                dumper.setNextDialog(nextDialog);
-                dumper.setProcess(dumpMessagePack);
-                Log.d(LOG_TAG, "All shit is set");
-            }
-        });
-        peers = new ArrayList<>();
         access_token = VKAccessToken.currentToken().accessToken;
-        currentOffset = 0;
+        dataManager = new DataManager(getApplicationContext());
         sendNotification();
-        // REMOVE
-        Log.d(LOG_TAG, access_token);
+        Log.d(LOG_TAG, "Pre-debug drop");
+        debugDrop();
+        Log.d(LOG_TAG, "Access token: " + access_token);
     }
 
     @Override
@@ -118,29 +91,21 @@ public class MessagesCollectorNew extends Service {
         public MessageData getSomeMessage() {
             return currentMessageData;
         }
+
+        public boolean getEstimatingState() {
+            return estimating;
+        }
     }
 
     public interface ResponseWork {
-        int doWork(VKResponse response, int peer_id, int currentProgress);
+        int doWork(VKResponse response, int peer_id, long currentProgress);
     }
-
-    private Runnable finishWork = new Runnable() {
-        @Override
-        public void run() {
-            sendFinishNotification();
-            SharedPreferences sPref = getSharedPreferences(Strings.settings, MODE_PRIVATE);
-            SharedPreferences.Editor editor = sPref.edit();
-            editor.putBoolean(Strings.stat_mode, true);
-            editor.apply();
-            stopSelf();
-        }
-    };
 
     private void sendFinishNotification() {
         Intent notificationIntent = new Intent(this, MainPage.class);
         PendingIntent intent = PendingIntent.getActivity(this, 0,
                 notificationIntent, 0);
-        if(mNotifyManager == null) {
+        if (mNotifyManager == null) {
             mNotifyManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         }
         mBuilder = new NotificationCompat.Builder(this);
@@ -158,7 +123,7 @@ public class MessagesCollectorNew extends Service {
         switch (commandType) {
             case Strings.commandDump:
                 mNotifyManager.notify(NOTIFICATION_ID, mBuilder.setProgress(0, 0, true).build());
-                dataHandler.post(getDialogsFromVK);
+                preparedThreads = new PreparedThreads(dumperInitialization, handlersDereference, getDialogsFromVK, getApplicationContext());
                 progress = 0;
                 break;
             // TODO
@@ -166,35 +131,7 @@ public class MessagesCollectorNew extends Service {
         return START_NOT_STICKY;
     }
 
-    public Runnable estimateDownload = new Runnable() {
-        @Override
-        public void run() {
-            for (Integer peer : dialogs) {
-                Cursor count = db.rawQuery("SELECT " + Strings.counter + " FROM " + Strings.counts +
-                        " WHERE " + Strings.dialog_id + " = ?;", new String[]{Integer.toString(peer)});
-                if (count.moveToFirst()) {
-                    worker.existingMessages.put(peer, count.getInt(count.getColumnIndex(Strings.counter)));
-                } else {
-                    worker.existingMessages.put(peer, 0);
-                    peers.add(peer);
-                }
-                count.close();
-            }
-            if (!peers.isEmpty()) {
-                ArrayDeque<Integer> d = new ArrayDeque<>();
-                for (Integer i : peers) {
-                    d.addLast(i);
-                }
-                dumper.setQueue(d);
-                dumper.expect_count = peers.size() / 25 + (peers.size() % 25 == 0 ? 0 : 1);
-                messageToCountOrLast(peers, VKWorker.GET_COUNT);
-            } else {
-                // TODO what should I do if you don't have any dialogs?
-            }
-        }
-    };
-
-    public void messageToCountOrLast(ArrayList<Integer> src, int flag) {
+    private void messageToCountOrLast(ArrayList<Integer> src, int flag) {
         int i = 0;
         do {
             Message m = requestHandler.obtainMessage();
@@ -208,19 +145,44 @@ public class MessagesCollectorNew extends Service {
         } while (i < src.size());
     }
 
+    private void setQueueToUpdate() {
+        ArrayDeque<Integer> queue = new ArrayDeque<>();
+        for (Integer dialog : dialogs) {
+            if (worker.realMessages.get(dialog) - worker.dialogData.get(dialog).messages == 0) break;
+            queue.addLast(dialog);
+        }
+        dumper.setQueue(queue);
+    }
+
+    private Runnable finishWork = new Runnable() {
+        @Override
+        public void run() {
+            serializeData(worker.dialogData, getApplicationContext());
+            sendFinishNotification();
+            SharedPreferences sPref = getSharedPreferences(Strings.settings, MODE_PRIVATE);
+            SharedPreferences.Editor editor = sPref.edit();
+            editor.putBoolean(Strings.stat_mode, true);
+            editor.apply();
+            stopSelf();
+        }
+    };
+
+    private Runnable estimateDownload = new Runnable() {
+        @Override
+        public void run() {
+            dumper.expect_count = dialogs.size() / 25 + (dialogs.size() % 25 == 0 ? 0 : 1);
+            messageToCountOrLast(dialogs, VKWorker.GET_COUNT);
+        }
+    };
+
     private Runnable getLastMessageIds = new Runnable() {
         @Override
         public void run() {
+            setQueueToUpdate();
             ArrayList<Integer> needToCollect = new ArrayList<>();
             for (Integer dialog : dialogs) {
-                Cursor cursor = db.rawQuery("SELECT " + Strings.message_id + " FROM " + Strings.last_message_id +
-                        " WHERE " + Strings.dialog_id + "=" + Integer.toString(dialog), new String[]{});
-                if (cursor.moveToFirst()) {
-                    worker.lastMessageIds.put(dialog, cursor.getInt(cursor.getColumnIndex(Strings.message_id)));
-                } else {
+                if (worker.dialogData.get(dialog).lastMessageId == -1)
                     needToCollect.add(dialog);
-                }
-                cursor.close();
             }
             if (!needToCollect.isEmpty()) {
                 dumper.expect_last = needToCollect.size() / 25 + (needToCollect.size() % 25 == 0 ? 0 : 1);
@@ -242,32 +204,98 @@ public class MessagesCollectorNew extends Service {
 
     private ResponseWork dumpMessagePack = new ResponseWork() {
         @Override
-        public int doWork(VKResponse response, int peer_id, int currentProgress) {
+        public int doWork(VKResponse response, int peer_id, long currentProgress) {
             try {
-                int diff = worker.realMessages.get(peer_id) - worker.existingMessages.get(peer_id);
-                String tableName = Strings.prefix_messages + Integer.toString(peer_id);
-                db.execSQL("CREATE TABLE IF NOT EXISTS " + tableName +
-                        " (message_id INTEGER PRIMARY KEY, body TEXT, date INT);");
+                 /*
+                   Template for message data that will store in txt file
+                   [message_id][from_id][out][body][date]
+                 */
+                DialogData thisDialog = worker.dialogData.get(peer_id);
+                DialogData prevData = worker.prevDialogData.get(peer_id, null);
+                long diff = worker.realMessages.get(peer_id) - (prevData == null ? 0 : prevData.messages);
+                BufferedWriter writer = dataManager.getWriter(peer_id);
                 JSONObject res = response.json.getJSONObject("response");
                 JSONArray messages = res.getJSONArray("result");
+                int messages_progress = 0;
+                int videos = 0;
+                int photos = 0;
+                int symbols = 0;
+                int walls = 0;
+                int out = 0;
+                int audios = 0;
                 int skipped = 0;
+                int out_symbols = 0;
+                TreeMap<Integer, Integer> chatters = new TreeMap<>();
+                boolean isChat = thisDialog.type == Easies.DIALOG_TYPE.CHAT;
                 if (res.getJSONArray("result").getJSONObject(0).has("skipped")) {
                     skipped = res.getJSONArray("result").getJSONObject(0).getInt("skipped");
                 }
                 int id = -1;
-                db.beginTransaction();
                 for (int i = 0; i < messages.length(); ++i) {
                     JSONArray msg = messages.getJSONObject(i).getJSONArray("items");
-                    for (int j = 0; j < msg.length(); ++j) {
+                    for (int j = msg.length() - 1; j >= 0; --j) {
                         JSONObject js = msg.getJSONObject(j);
-                        ContentValues cv = new ContentValues();
-                        id = Math.max(id, js.getInt(Strings.id));
-                        cv.put(Strings.message_id, id);
-                        cv.put(Strings.body, js.getString(Strings.body));
-                        cv.put(Strings.date, js.getInt(Strings.date));
-                        db.insertWithOnConflict(tableName, null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+                        int cur_id = js.getInt("id");
+                        if (cur_id > id) {
+                            ++messages_progress;
+                            id = cur_id;
+                            int from_id = js.getInt("from_id");
+                            if (isChat) {
+                                if (chatters.containsKey(from_id)) {
+                                    int m = chatters.get(from_id);
+                                    chatters.put(from_id, ++m);
+                                } else {
+                                    chatters.put(from_id, 1);
+                                }
+                            }
+                            int cur_out = js.getInt("out");
+                            int date = js.getInt("date");
+                            String body = js.getString("body");
+                            if (cur_out == 1) {
+                                out++;
+                                out_symbols += body.length();
+                            }
+                            symbols += body.length();
+                            putData(writer, Integer.toString(cur_id));
+                            putData(writer, Integer.toString(from_id));
+                            putData(writer, Integer.toString(cur_out));
+                            putData(writer, body.replace('[', ' ').replace(']', ' '));
+                            putData(writer, Integer.toString(date));
+                            if (js.has("attachments")) {
+                                JSONArray attachments = js.getJSONArray("attachments");
+                                for (int k = 0; k < attachments.length(); ++k) {
+                                    JSONObject attachment = attachments.getJSONObject(k);
+                                    switch (attachment.getString("type")) {
+                                        case "video":
+                                            videos++;
+                                            break;
+                                        case "photo":
+                                            photos++;
+                                            break;
+                                        case "audio":
+                                            audios++;
+                                            break;
+                                        case "wall":
+                                            walls++;
+                                            break;
+                                        default:
+                                            Log.d(LOG_TAG, "Unsupported attachment type: "
+                                                    + attachment.getString("type"));
+
+                                    }
+                                }
+                            }
+                            try {
+                                writer.newLine();
+                            } catch (IOException ex) {
+                                Log.wtf(LOG_TAG, ex.toString());
+                            }
+                        }
                     }
                 }
+                progress += messages_progress;
+                Log.d(LOG_TAG, String.format("Update: %d %d %d %d %d %d %d %d", progress, symbols, videos, photos, audios, walls, out, out_symbols));
+                thisDialog.update(messages_progress, symbols, videos, photos, audios, walls, out, out_symbols, chatters);
                 JSONObject first = response.json.getJSONObject("response")
                         .getJSONArray("result")
                         .getJSONObject(0)
@@ -276,20 +304,10 @@ public class MessagesCollectorNew extends Service {
                 currentMessageData = new MessageData(peer_id, first.getString("body"), first.getInt("date"),
                         worker.dialogData.get(peer_id), ++messageId);
                 Log.d(LOG_TAG, "Message: " + currentMessageData.message);
-                ContentValues d = new ContentValues();
-                d.put(Strings.message_id, id);
-                d.put(Strings.dialog_id, peer_id);
-                db.insertWithOnConflict(Strings.last_message_id, null, d, SQLiteDatabase.CONFLICT_REPLACE);
-                currentProgress = Math.min(currentProgress + packSize, diff);
-                ContentValues s = new ContentValues();
-                s.put(Strings.counter, currentProgress + worker.existingMessages.get(peer_id));
-                s.put(Strings.dialog_id, peer_id);
-                db.insertWithOnConflict(Strings.counts, null, s, SQLiteDatabase.CONFLICT_REPLACE);
-                db.endTransaction();
-                progress += Math.min(packSize, diff - currentProgress);
                 Log.d(LOG_TAG, "Progress " + Integer.toString(progress));
                 mNotifyManager.notify(NOTIFICATION_ID, mBuilder.setProgress(worker.allMessages, progress, false).build());
                 if (skipped == 0) {
+                    dataManager.close(peer_id);
                     return -1;
                 } else {
                     int new_start = response.json.getJSONObject("response").getInt("new_start");
@@ -303,7 +321,7 @@ public class MessagesCollectorNew extends Service {
         }
     };
 
-    public void sendMessageGetMessagePack(int peer_id, int new_start) {
+    private void sendMessageGetMessagePack(int peer_id, int new_start) {
         Message m = requestHandler.obtainMessage();
         Bundle b = new Bundle();
         b.putInt(Strings.peer_id, peer_id);
@@ -317,7 +335,7 @@ public class MessagesCollectorNew extends Service {
         void call(int arg);
     }
 
-    public Runnable getDialogsFromVK = new Runnable() {
+    private Runnable getDialogsFromVK = new Runnable() {
         @Override
         public void run() {
             Message m = requestHandler.obtainMessage();
@@ -329,32 +347,50 @@ public class MessagesCollectorNew extends Service {
         }
     };
 
-    public OneArg nextDialog = new OneArg() {
+    private OneArg nextDialog = new OneArg() {
         @Override
         public void call(final int peer_id) {
-            sendMessageGetMessagePack(peer_id, worker.lastMessageIds.get(peer_id));
+            sendMessageGetMessagePack(peer_id, worker.dialogData.get(peer_id).lastMessageId);
         }
     };
 
-    public Runnable getDialogs = new Runnable() {
+    private Runnable getDialogs = new Runnable() {
         @Override
         public void run() {
             dialogs = new ArrayList<>();
-            final Cursor cursor = db.rawQuery("SELECT dialog_id, type, date FROM dialogs ORDER BY date DESC;", new String[]{});
-            int columnIndex = cursor.getColumnIndex(Strings.dialog_id);
-            if (cursor.moveToFirst()) {
-                do {
-                    dialogs.add(cursor.getInt(columnIndex));
-                } while (cursor.moveToNext());
+            ArrayList<DialogData> dialogDataSorted = new ArrayList<>();
+            for (int i = 0; i < worker.dialogData.size(); ++i) {
+                dialogDataSorted.add(worker.dialogData.valueAt(i));
             }
-            cursor.close();
+            Collections.sort(dialogDataSorted, new Comparator<DialogData>() {
+                @Override
+                public int compare(DialogData dialogData, DialogData t1) {
+                    return t1.date - dialogData.date;
+                }
+            });
+            for (DialogData d : dialogDataSorted) {
+                dialogs.add(d.dialog_id);
+            }
         }
     };
 
-    public void debugDrop(SQLiteDatabase data) {
-        data.execSQL("DROP TABLE IF EXISTS " + Strings.last_message_id + ";");
-        data.execSQL("DROP TABLE IF EXISTS " + Strings.counts + ";");
-        dbHelper.onCreate(data);
+    public void debugDrop() {
+        SparseArray<DialogData> t = new SparseArray<DialogData>();
+        t.put(10, null);
+        t.put(20, new DialogData(1, Easies.DIALOG_TYPE.CHAT));
+        Easies.serializeData(t, getApplicationContext());
+        SparseArray<DialogData> assertion = deserializeData(getApplicationContext());
+        assert assertion.get(10) == null;
+        assert assertion.get(20).type == Easies.DIALOG_TYPE.CHAT;
+        String fileName = "dialogData.out";
+        File dialogDataFile = new File(Easies.getSerializablePath(getApplicationContext()) + fileName);
+        if (dialogDataFile.exists()) {
+            if (dialogDataFile.delete()) {
+                Log.d(LOG_TAG, "Successfully deleted prevData");
+            } else {
+                Log.d(LOG_TAG, "Previous data isn't exist");
+            }
+        }
     }
 
     private void sendNotification() {
@@ -370,13 +406,13 @@ public class MessagesCollectorNew extends Service {
                 .setOngoing(true);
     }
 
-    public MessagesCollectorNew.ResponseWork whenGotDialogs = new MessagesCollectorNew.ResponseWork() {
+    private MessagesCollectorNew.ResponseWork whenGotDialogs = new MessagesCollectorNew.ResponseWork() {
         @Override
-        public int doWork(VKResponse response, int peer_id, int currentProgress) {
+        public int doWork(VKResponse response, int peer_id, long currentProgress) {
             Log.d(LOG_TAG, "WHEN GOT DIALOGS");
             ArrayList<Integer> user_ids = new ArrayList<>(), group_ids = new ArrayList<>();
             try {
-                Log.d(LOG_TAG, "DIalogs collecting");
+                Log.d(LOG_TAG, "Dialogs collecting");
                 JSONArray items = response.json.getJSONObject("response").getJSONArray("items");
                 worker.dialogsCount = response.json.getJSONObject("response").getInt("count");
                 for (int i = 0; i < items.length(); ++i) {
@@ -388,30 +424,16 @@ public class MessagesCollectorNew extends Service {
                     worker.time.put(dialog_id, message.getInt("date"));
                     switch (type) {
                         case CHAT:
-                            ContentValues val = new ContentValues();
-                            val.put(Strings.dialog_id, dialog_id);
-                            val.put(Strings.type, Strings.chat);
-                            val.put(Strings.date, worker.time.get(dialog_id));
-                            db.insertWithOnConflict(Strings.dialogs, null, val, SQLiteDatabase.CONFLICT_REPLACE);
-                            ContentValues cv = new ContentValues();
-                            cv.put(Strings.dialog_id, dialog_id);
-                            cv.put(Strings.name, message.getString("title"));
-                            db.insertWithOnConflict(Strings.names, null, cv, SQLiteDatabase.CONFLICT_REPLACE);
-                            ContentValues con = new ContentValues();
-                            con.put(Strings.dialog_id, dialog_id);
                             String link = message.has("photo_100") ? message.getString("photo_100") : Strings.no_photo;
-                            con.put(Strings.link, link);
-                            db.insertWithOnConflict(Strings.pictures, null, con, SQLiteDatabase.CONFLICT_REPLACE);
-
-                            DialogData chatData = new DialogData(dialog_id, Easies.DIALOG_TYPE.CHAT);
+                            DialogData chatData = worker.prevDialogData.get(dialog_id, new DialogData(dialog_id, Easies.DIALOG_TYPE.CHAT));
                             chatData.link = link;
                             chatData.name = message.getString("title");
+                            chatData.date = worker.time.get(dialog_id);
                             worker.dialogData.put(dialog_id, chatData);
                             break;
                         case USER:
                             user_ids.add(dialog_id);
                             break;
-
                         case COMMUNITY:
                             group_ids.add(-dialog_id);
                     }
@@ -419,8 +441,7 @@ public class MessagesCollectorNew extends Service {
             } catch (JSONException ex) {
                 Log.e(LOG_TAG, ex.toString());
             }
-            if(user_ids.size() > 0)
-            {
+            if (user_ids.size() > 0) {
                 Message m = requestHandler.obtainMessage();
                 m.what = VKWorker.GET_USERS;
                 Bundle b = new Bundle();
@@ -430,11 +451,11 @@ public class MessagesCollectorNew extends Service {
             } else {
                 dumper.gotUsers = true;
             }
-            if(group_ids.size() > 0) {
+            if (group_ids.size() > 0) {
                 Message m = requestHandler.obtainMessage();
                 m.what = VKWorker.GET_GROUPS;
                 Bundle b = new Bundle();
-                b.putIntegerArrayList("group_ids", user_ids);
+                b.putIntegerArrayList("group_ids", group_ids);
                 m.setData(b);
                 requestHandler.sendMessage(m);
             } else {
@@ -446,31 +467,18 @@ public class MessagesCollectorNew extends Service {
 
     private MessagesCollectorNew.ResponseWork whenGotUsers = new MessagesCollectorNew.ResponseWork() {
         @Override
-        public int doWork(VKResponse response, int peer_id, int currentProgress) {
+        public int doWork(VKResponse response, int peer_id, long currentProgress) {
             try {
                 JSONArray users = response.json.getJSONArray("response");
                 for (int i = 0; i < users.length(); ++i) {
-                    ContentValues val = new ContentValues();
                     JSONObject user = users.getJSONObject(i);
                     int dialog_id = user.getInt(Strings.id);
-                    val.put(Strings.dialog_id, dialog_id);
-                    val.put(Strings.type, Strings.user);
-                    val.put(Strings.date, worker.time.get(dialog_id));
-                    db.insertWithOnConflict(Strings.dialogs, null, val, SQLiteDatabase.CONFLICT_REPLACE);
                     String username = user.getString("first_name") + " " + user.getString("last_name");
-                    ContentValues cv = new ContentValues();
-                    cv.put(Strings.dialog_id, dialog_id);
-                    cv.put(Strings.name, username);
-                    db.insertWithOnConflict(Strings.names, null, cv, SQLiteDatabase.CONFLICT_REPLACE);
-                    ContentValues con = new ContentValues();
-                    con.put(Strings.dialog_id, dialog_id);
                     String link = user.has("photo_100") ? user.getString("photo_100") : Strings.no_photo;
-                    con.put(Strings.link, link);
-                    db.insertWithOnConflict(Strings.pictures, null, con, SQLiteDatabase.CONFLICT_REPLACE);
-
-                    DialogData userData = new DialogData(dialog_id, Easies.DIALOG_TYPE.CHAT);
+                    DialogData userData = worker.prevDialogData.get(dialog_id, new DialogData(dialog_id, Easies.DIALOG_TYPE.USER));
                     userData.link = link;
                     userData.name = username;
+                    userData.date = worker.time.get(dialog_id);
                     worker.dialogData.put(dialog_id, userData);
                 }
 
@@ -483,30 +491,17 @@ public class MessagesCollectorNew extends Service {
 
     private MessagesCollectorNew.ResponseWork whenGotGroups = new MessagesCollectorNew.ResponseWork() {
         @Override
-        public int doWork(VKResponse response, int peer_id, int currentProgress) {
+        public int doWork(VKResponse response, int peer_id, long currentProgress) {
             try {
                 JSONArray array = response.json.getJSONObject("response").getJSONArray("items");
                 for (int i = 0; i < array.length(); ++i) {
-                    ContentValues val = new ContentValues();
                     JSONObject jj = array.getJSONObject(i).getJSONObject("message");
                     int id = -jj.getInt("id");
-                    val.put(Strings.dialog_id, id);
-                    val.put(Strings.type, Strings.community);
-                    val.put(Strings.date, worker.time.get(id));
-                    db.insertWithOnConflict(Strings.dialogs, null, val, SQLiteDatabase.CONFLICT_REPLACE);
-                    ContentValues cv = new ContentValues();
-                    cv.put(Strings.dialog_id, id);
-                    cv.put(Strings.name, array.getJSONObject(i).getString("name"));
-                    db.insertWithOnConflict(Strings.names, null, cv, SQLiteDatabase.CONFLICT_REPLACE);
-                    ContentValues con = new ContentValues();
-                    con.put(Strings.dialog_id, id);
                     String link = jj.has("photo_100") ? jj.getString("photo_100") : Strings.no_photo;
-                    con.put(Strings.link, link);
-                    db.insertWithOnConflict(Strings.pictures, null, con, SQLiteDatabase.CONFLICT_REPLACE);
-
-                    DialogData groupData = new DialogData(id, Easies.DIALOG_TYPE.CHAT);
+                    DialogData groupData = worker.prevDialogData.get(id, new DialogData(id, Easies.DIALOG_TYPE.COMMUNITY));
                     groupData.link = link;
                     groupData.name = array.getJSONObject(i).getString("name");
+                    groupData.date = worker.time.get(id);
                     worker.dialogData.put(id, groupData);
 
                 }
@@ -516,4 +511,40 @@ public class MessagesCollectorNew extends Service {
             return 0;
         }
     };
+
+    private Runnable dumperInitialization = new Runnable() {
+        @Override
+        public void run() {
+            dumper.setOnFinishCount(getLastMessageIds);
+            dumper.setOnFinishLast(collectMessages);
+            dumper.setOnFinishMessages(finishWork);
+            dumper.setOnFinishGetDialogs(new Runnable() {
+                @Override
+                public void run() {
+                    if (currentOffset < worker.dialogsCount) {
+                        getDialogsFromVK.run();
+                    } else {
+                        dataHandler.post(getDialogs);
+                        dataHandler.post(estimateDownload);
+                    }
+                }
+            });
+            dumper.setWhenGotDialogs(whenGotDialogs);
+            dumper.setWhenGotGroups(whenGotGroups);
+            dumper.setWhenGotUsers(whenGotUsers);
+            dumper.setNextDialog(nextDialog);
+            dumper.setProcess(dumpMessagePack);
+            Log.d(LOG_TAG, "All shit is set");
+        }
+    };
+
+    private void putData(BufferedWriter writer, String data) {
+        try {
+            writer.write((int) '[');
+            writer.write(data);
+            writer.write((int) ']');
+        } catch (IOException ex) {
+            Log.wtf(LOG_TAG, ex.toString());
+        }
+    }
 }

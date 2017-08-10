@@ -4,12 +4,10 @@ import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
 import android.view.View;
 import android.widget.ProgressBar;
 import com.vk.sdk.VKAccessToken;
@@ -49,10 +47,23 @@ public class MainPage extends AppCompatActivity {
         access_token = token.accessToken;
         mLayoutManager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(mLayoutManager);
-        (new PrepareThreads()).execute();
+        new AsyncTask<Void, Void, DialogsAdapter>() {
+
+            @Override
+            protected DialogsAdapter doInBackground(Void... objects) {
+                return new DialogsAdapter(getApplicationContext(), mLayoutManager);
+            }
+
+            @Override
+            protected void onPostExecute(DialogsAdapter dialogsAdapter) {
+                mProgress.setVisibility(View.GONE);
+                mRecyclerView.setVisibility(View.VISIBLE);
+                mRecyclerView.setAdapter(dialogsAdapter);
+            }
+        }.execute();
     }
 
-    public final class PrepareThreads extends AsyncTask<Void, Void, Void> {
+   /* public final class PrepareThreads extends AsyncTask<Void, Void, Void> {
         @Override
         protected Void doInBackground(Void... voids) {
             dumper = new Dumper();
@@ -87,7 +98,7 @@ public class MainPage extends AppCompatActivity {
             mRecyclerView.setAdapter(new DialogsAdapter(dbHelper, MainPage.this, mLayoutManager));
             mRecyclerView.setOnScrollListener(((DialogsAdapter)mRecyclerView.getAdapter()).scrolling);
         }
-    };
+    };*/
 
     enum STAT_MODE {
         SIMPLE, ADVANCED

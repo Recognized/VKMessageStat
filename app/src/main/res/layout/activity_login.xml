@@ -10,7 +10,8 @@
               tools:context="com.vladsaif.vkmessagestat.ui.LoginActivity"
               android:background="@color/colorPrimary"
               android:layout_gravity="center_horizontal"
-            android:gravity="center_vertical">
+              android:gravity="center_vertical"
+              android:animateLayoutChanges="true">
     <Button
             android:id="@+id/sign_in_button"
             style="@android:style/TextAppearance.Small"
