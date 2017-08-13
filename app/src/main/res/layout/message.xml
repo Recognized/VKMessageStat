@@ -16,22 +16,30 @@
             android:layout_height="wrap_content"
             android:paddingStart="5dp"
             android:paddingEnd="5dp">
-        <TextView
-                android:id="@+id/dialog_title"
-                android:text="Dialog name stub"
+        <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textAppearance="@style/TextAppearance.AppCompat.Subhead" android:fontFamily="sans-serif-condensed"
-                android:textSize="18sp"
-                android:paddingBottom="@dimen/message_padding"/>
-        <TextView
-                android:id="@+id/time"
-                android:text="00:00"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textAppearance="@style/TextAppearance.AppCompat.Body1"
-                android:textColor="@color/vk_share_link_color"
-                android:paddingBottom="@dimen/message_padding"/>
+                android:layout_height="@dimen/dialog_name_height"
+                android:orientation="horizontal">
+            <TextView
+                    android:id="@+id/dialog_title"
+                    android:text="Very long dialog name stub that you can never read"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:maxLines="1"
+                    android:textAppearance="@style/TextAppearance.AppCompat.Subhead"
+                    android:fontFamily="sans-serif-condensed"
+                    android:textSize="18sp"
+                    android:ellipsize="end"
+                    android:paddingEnd="70dp"/>
+            <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:maxLines="1"
+                    android:id="@+id/date"
+                    android:layout_gravity="end"
+                    android:padding="@dimen/table"
+                    android:text="21 jul 2017" android:textAlignment="textEnd" android:textSize="12sp"/>
+        </FrameLayout>
         <TextView
                 android:id="@+id/content"
                 android:text="This is simple content of the message bla-bla-bla-bla"

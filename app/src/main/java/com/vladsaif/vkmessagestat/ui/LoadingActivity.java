@@ -37,34 +37,42 @@ public class LoadingActivity extends AppCompatActivity {
     private TextView date;
     private ImageView avatar;
     private LinearLayout estimateProgressBar;
+    private boolean mBound = false;
 
     private ServiceConnection sConn = new ServiceConnection() {
         private MessagesCollectorNew.Progress mBinder;
         private Runnable refreshProgress = new Runnable() {
             @Override
             public void run() {
-                int progress = mBinder.getProgress();
-                progressBar.setProgress(progress);
-                if (progress < 100) handler.postDelayed(refreshProgress, periodProgress);
+                if (mBinder.isReady()) {
+                    int progress = mBinder.getProgress();
+                    progressBar.setProgress(progress);
+                    if (progress < 100) handler.postDelayed(refreshProgress, periodProgress);
+                } else handler.postDelayed(refreshProgress, periodProgress);
             }
         };
         private Runnable refreshMessage = new Runnable() {
             @Override
             public void run() {
-                MessageData data = mBinder.getSomeMessage();
-                if(data != null && data.id != prevId) {
-                    messageContainer.setVisibility(View.VISIBLE);
-                    estimateProgressBar.setVisibility(View.GONE);
-                    prevId = data.id;
-                    Log.d(LOG_TAG, "Data isn't null");
-                    fillData(data, message);
+                if (mBinder.isReady()) {
+                    MessageData data = mBinder.getSomeMessage();
+                    if (data != null && data.id != prevId) {
+                        messageContainer.setVisibility(View.VISIBLE);
+                        estimateProgressBar.setVisibility(View.GONE);
+                        prevId = data.id;
+                        Log.d(LOG_TAG, "Data isn't null");
+                        fillData(data, message);
+                    }
                 }
                 handler.postDelayed(refreshMessage, periodMessage);
             }
         };
+
         @Override
         public void onServiceConnected(ComponentName componentName, final IBinder iBinder) {
+            Log.d(LOG_TAG, "Service connected");
             mBinder = (MessagesCollectorNew.Progress) iBinder;
+            mBound = true;
             if (mBinder.getEstimatingState()) {
                 messageContainer.setVisibility(View.GONE);
                 estimateProgressBar.setVisibility(View.VISIBLE);
@@ -78,7 +86,13 @@ public class LoadingActivity extends AppCompatActivity {
 
         @Override
         public void onServiceDisconnected(ComponentName componentName) {
+            Log.d(LOG_TAG, "Service disconnected");
             handler.removeCallbacksAndMessages(null);
+            mBound = false;
+            if (sConn != null) unbindService(sConn);
+            Intent intent = new Intent(LoadingActivity.this, MainPage.class);
+            startActivity(intent);
+            finish();
         }
     };
 
@@ -108,6 +122,7 @@ public class LoadingActivity extends AppCompatActivity {
             this.view = view;
             this.counter = counter;
         }
+
         @Override
         protected void onPostExecute(Bitmap result) {
             if (result != null && currentCounter == counter) {
@@ -134,9 +149,10 @@ public class LoadingActivity extends AppCompatActivity {
                 .inflate(R.layout.message, messageContainer, true);
         content = message.findViewById(R.id.content);
         name = message.findViewById(R.id.dialog_title);
-        date = message.findViewById(R.id.time);
+        date = message.findViewById(R.id.date);
         avatar = message.findViewById(R.id.main_page_avatar);
         estimateProgressBar = (LinearLayout) findViewById(R.id.estimate_download);
+        estimateProgressBar.setVisibility(View.VISIBLE);
         bindService(new Intent(getApplicationContext(), MessagesCollectorNew.class), sConn, 0);
         ViewGroup notToolbar = (ViewGroup) findViewById(R.id.not_toolbar);
         LayoutTransition layoutTransition = notToolbar.getLayoutTransition();
@@ -147,6 +163,11 @@ public class LoadingActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        Log.d(LOG_TAG, "Destroyed loading activity");
+        if (mBound) {
+            mBound = false;
+            unbindService(sConn);
+        }
         handler.removeCallbacksAndMessages(null);
     }
 }

@@ -21,6 +21,10 @@ public class DialogData implements Serializable, Cloneable {
     public long walls = 0;
     public long out = 0;
     public long out_symbols = 0;
+    public long gifts = 0;
+    public long docs = 0;
+    public long link_attachms = 0;
+    public long stickers = 0;
     public int mposition;
     public int sposition;
     public TreeMap<Integer, Integer> chatters;
@@ -41,7 +45,8 @@ public class DialogData implements Serializable, Cloneable {
     }
 
     public void update(long messages, long symbols, long videos, long pictures,
-                       long audios, long walls, long out, long out_symbols, Map<Integer, Integer> chatters) {
+                       long audios, long walls, long out, long out_symbols,
+                       long docs, long links, long gifts, long stickers, Map<Integer, Integer> chatters) {
         this.messages += messages;
         this.symbols += symbols;
         this.videos += videos;
@@ -50,6 +55,10 @@ public class DialogData implements Serializable, Cloneable {
         this.audios += audios;
         this.out += out;
         this.out_symbols += out_symbols;
+        this.docs += docs;
+        this.link_attachms += links;
+        this.gifts += gifts;
+        this.stickers += stickers;
         for (Integer i : chatters.keySet()) {
             Integer k = this.chatters.get(i);
             if (k == null) this.chatters.put(i, chatters.get(i));

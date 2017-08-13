@@ -6,6 +6,8 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.*;
 import android.support.v7.app.NotificationCompat;
 import android.util.Log;
@@ -51,6 +53,8 @@ public class MessagesCollectorNew extends Service {
     private int messageId = 0;
     private DataManager dataManager;
     private boolean estimating = true;
+    private boolean preparedThreadsReady = false;
+    private boolean runOnlyOnceWhenConnectionLost = true;
     private Runnable handlersDereference = new Runnable() {
         @Override
         public void run() {
@@ -60,6 +64,7 @@ public class MessagesCollectorNew extends Service {
             dataHandler = preparedThreads.dataHandler;
         }
     };
+    private ConnectivityManager connectivityManager;
 
     @Override
     public void onCreate() {
@@ -67,8 +72,7 @@ public class MessagesCollectorNew extends Service {
         access_token = VKAccessToken.currentToken().accessToken;
         dataManager = new DataManager(getApplicationContext());
         sendNotification();
-        Log.d(LOG_TAG, "Pre-debug drop");
-        debugDrop();
+        // Log.d(LOG_TAG, "Pre-debug drop");
         Log.d(LOG_TAG, "Access token: " + access_token);
     }
 
@@ -83,6 +87,11 @@ public class MessagesCollectorNew extends Service {
         return true;
     }
 
+    @Override
+    public void onDestroy() {
+        if (worker != null) serializeData(worker.dialogData, this);
+    }
+
     public final class Progress extends Binder {
         public int getProgress() {
             return Math.round((float) progress / (float) worker.allMessages * 100);
@@ -94,6 +103,10 @@ public class MessagesCollectorNew extends Service {
 
         public boolean getEstimatingState() {
             return estimating;
+        }
+
+        public boolean isReady() {
+            return preparedThreadsReady;
         }
     }
 
@@ -134,6 +147,7 @@ public class MessagesCollectorNew extends Service {
     private void messageToCountOrLast(ArrayList<Integer> src, int flag) {
         int i = 0;
         do {
+            Log.d(LOG_TAG, "Send list " + Integer.toString(i));
             Message m = requestHandler.obtainMessage();
             m.what = flag;
             Bundle b = new Bundle();
@@ -148,8 +162,9 @@ public class MessagesCollectorNew extends Service {
     private void setQueueToUpdate() {
         ArrayDeque<Integer> queue = new ArrayDeque<>();
         for (Integer dialog : dialogs) {
-            if (worker.realMessages.get(dialog) - worker.dialogData.get(dialog).messages == 0) break;
-            queue.addLast(dialog);
+            if (worker.realMessages.get(dialog) - worker.dialogData.get(dialog).messages != 0) {
+                queue.addFirst(dialog);
+            }
         }
         dumper.setQueue(queue);
     }
@@ -171,6 +186,8 @@ public class MessagesCollectorNew extends Service {
         @Override
         public void run() {
             dumper.expect_count = dialogs.size() / 25 + (dialogs.size() % 25 == 0 ? 0 : 1);
+            Log.d(LOG_TAG, "Expect getCount requsets: " + Integer.toString(dumper.expect_count));
+            Log.d(LOG_TAG, "Dialogs size is " + Integer.toString(dialogs.size()));
             messageToCountOrLast(dialogs, VKWorker.GET_COUNT);
         }
     };
@@ -187,6 +204,11 @@ public class MessagesCollectorNew extends Service {
             if (!needToCollect.isEmpty()) {
                 dumper.expect_last = needToCollect.size() / 25 + (needToCollect.size() % 25 == 0 ? 0 : 1);
                 messageToCountOrLast(needToCollect, VKWorker.GET_LAST);
+            } else {
+                Message m = dataHandler.obtainMessage();
+                dumper.expect_last = 1;
+                m.what = VKWorker.FINISH_GET_LAST;
+                dataHandler.sendMessage(m);
             }
         }
     };
@@ -225,6 +247,10 @@ public class MessagesCollectorNew extends Service {
                 int audios = 0;
                 int skipped = 0;
                 int out_symbols = 0;
+                int docs = 0;
+                int stickers = 0;
+                int links = 0;
+                int gifts = 0;
                 TreeMap<Integer, Integer> chatters = new TreeMap<>();
                 boolean isChat = thisDialog.type == Easies.DIALOG_TYPE.CHAT;
                 if (res.getJSONArray("result").getJSONObject(0).has("skipped")) {
@@ -278,6 +304,18 @@ public class MessagesCollectorNew extends Service {
                                         case "wall":
                                             walls++;
                                             break;
+                                        case "gift":
+                                            gifts++;
+                                            break;
+                                        case "link":
+                                            links++;
+                                            break;
+                                        case "doc":
+                                            docs++;
+                                            break;
+                                        case "sticker":
+                                            stickers++;
+                                            break;
                                         default:
                                             Log.d(LOG_TAG, "Unsupported attachment type: "
                                                     + attachment.getString("type"));
@@ -294,8 +332,11 @@ public class MessagesCollectorNew extends Service {
                     }
                 }
                 progress += messages_progress;
-                Log.d(LOG_TAG, String.format("Update: %d %d %d %d %d %d %d %d", progress, symbols, videos, photos, audios, walls, out, out_symbols));
-                thisDialog.update(messages_progress, symbols, videos, photos, audios, walls, out, out_symbols, chatters);
+                Log.d(LOG_TAG, String.format("Update: %d %d %d %d %d %d %d %d",
+                        progress, symbols, videos, photos, audios, walls, out, out_symbols));
+                thisDialog.update(messages_progress, symbols, videos, photos, audios,
+                        walls, out, out_symbols, docs, links, gifts, stickers, chatters);
+                thisDialog.messages = Math.min(thisDialog.messages, worker.realMessages.get(thisDialog.dialog_id));
                 JSONObject first = response.json.getJSONObject("response")
                         .getJSONArray("result")
                         .getJSONObject(0)
@@ -305,7 +346,10 @@ public class MessagesCollectorNew extends Service {
                         worker.dialogData.get(peer_id), ++messageId);
                 Log.d(LOG_TAG, "Message: " + currentMessageData.message);
                 Log.d(LOG_TAG, "Progress " + Integer.toString(progress));
-                mNotifyManager.notify(NOTIFICATION_ID, mBuilder.setProgress(worker.allMessages, progress, false).build());
+                mNotifyManager.notify(NOTIFICATION_ID, mBuilder
+                        .setProgress(worker.allMessages, progress, false)
+                        .setContentText(getString(R.string.download_text))
+                        .build());
                 if (skipped == 0) {
                     dataManager.close(peer_id);
                     return -1;
@@ -338,6 +382,7 @@ public class MessagesCollectorNew extends Service {
     private Runnable getDialogsFromVK = new Runnable() {
         @Override
         public void run() {
+            preparedThreadsReady = true;
             Message m = requestHandler.obtainMessage();
             m.what = VKWorker.GET_DIALOGS;
             m.arg1 = 200;
@@ -532,11 +577,44 @@ public class MessagesCollectorNew extends Service {
             dumper.setWhenGotDialogs(whenGotDialogs);
             dumper.setWhenGotGroups(whenGotGroups);
             dumper.setWhenGotUsers(whenGotUsers);
+            dumper.setWhenConnectionLost(whenConnectionLost);
+            dumper.setWhenConnectionRestored(whenConnectionRestored);
             dumper.setNextDialog(nextDialog);
             dumper.setProcess(dumpMessagePack);
             Log.d(LOG_TAG, "All shit is set");
         }
     };
+
+    public Runnable whenConnectionLost = new Runnable() {
+        @Override
+        public void run() {
+            if (runOnlyOnceWhenConnectionLost) {
+                mBuilder.setOngoing(true)
+                        .setContentText("Восстановление соединения...")
+                        .setProgress(0, 0, true);
+                mNotifyManager.notify(NOTIFICATION_ID, mBuilder.build());
+                serializeData(worker.dialogData, getApplicationContext());
+                runOnlyOnceWhenConnectionLost = false;
+            }
+            sendMessageToWorker(VKWorker.TRY_CONNECTION);
+        }
+    };
+
+    private Runnable whenConnectionRestored = new Runnable() {
+        @Override
+        public void run() {
+            runOnlyOnceWhenConnectionLost = true;
+            sendMessageToWorker(VKWorker.CONTINUE_WORK);
+        }
+    };
+
+    private boolean isNetworkAvailable() {
+        if (connectivityManager == null) {
+            connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        }
+        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+        return activeNetworkInfo != null && activeNetworkInfo.isConnected();
+    }
 
     private void putData(BufferedWriter writer, String data) {
         try {
@@ -546,5 +624,11 @@ public class MessagesCollectorNew extends Service {
         } catch (IOException ex) {
             Log.wtf(LOG_TAG, ex.toString());
         }
+    }
+
+    public void sendMessageToWorker(int flag) {
+        Message m = requestHandler.obtainMessage();
+        m.what = flag;
+        requestHandler.sendMessage(m);
     }
 }

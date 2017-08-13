@@ -30,6 +30,7 @@
                 android:layout_height="match_parent"
                 android:gravity="center_vertical"
                 android:id="@+id/estimate_download"
+                android:visibility="gone"
                 android:animateLayoutChanges="true">
             <ProgressBar
                     style="?android:attr/progressBarStyle"

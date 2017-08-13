@@ -30,6 +30,8 @@
     <string name="unavailable">недоступно</string>
     <string name="counting">ведется подсчет…</string>
     <string name="estimate_download">Оценка времени загрузки</string>
+    <string name="your_stat">Вы</string>
+    <string name="other_stat">Остальные</string>
 
 
 </resources>

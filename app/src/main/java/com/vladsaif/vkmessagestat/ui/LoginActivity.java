@@ -98,7 +98,9 @@ public class LoginActivity extends AppCompatActivity {
             Intent openProgress = new Intent(getApplicationContext(), LoadingActivity.class);
             startActivity(openProgress);
         } else {
-            startActivity(new Intent(this, MainPage.class));
+            Intent intent = new Intent(this, MainPage.class);
+            startActivity(intent);
         }
+        finish();
     }
 }

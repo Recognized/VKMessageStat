@@ -19,10 +19,9 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.Date;
 
-// Singleton
 public class VKWorker extends HandlerThread {
     private final String LOG_TAG = VKWorker.class.getSimpleName();
-    private final long fixedDelay = 334;
+    private final long fixedDelay = 350;
     private final Handler callback;
     private Handler dumper;
     public Handler mHandler;
@@ -33,6 +32,7 @@ public class VKWorker extends HandlerThread {
     public SparseIntArray time;
     public int allMessages;
     public int dialogsCount;
+    private VKRequest failedRequest;
     public static final int GET_LAST = 1;
     public static final int GET_COUNT = 2;
     public static final int GET_MESSAGES = 3;
@@ -46,6 +46,10 @@ public class VKWorker extends HandlerThread {
     public static final int FINISH_GET_DIALOGS = 1004;
     public static final int FINISH_GET_USERS = 1005;
     public static final int FINISH_GET_GROUPS = 1006;
+    public static final int HTTP_ERROR = 666;
+    public static final int TRY_CONNECTION = 10001;
+    public static final int CONNECTION_RESTORED = 10002;
+    public static final int CONTINUE_WORK = 10003;
 
     public VKWorker(Handler dumper, String access_token, Handler callback, Context context) {
         super("VKWorker");
@@ -138,19 +142,38 @@ public class VKWorker extends HandlerThread {
                         int count = msg.arg1;
                         int offset = msg.arg2;
                         VKRequest getDialogs = new VKRequest("messages.getDialogs",
-                                VKParameters.from("count", Integer.toString(count), "offset", Integer.toString(offset)));
+                                VKParameters.from("count", Integer.toString(count), "offset", Integer.toString(offset),
+                                        "v", "5.67"));
                         getDialogs.executeWithListener(getDialogsListener);
                         break;
                     case GET_USERS:
                         VKRequest users = new VKRequest("users.get",
                                 VKParameters.from("user_ids", Easies.join(b.getIntegerArrayList("user_ids")),
-                                        "fields", "has_photo,photo_100"));
+                                        "fields", "has_photo,photo_100", "v", "5.67"));
                         users.executeWithListener(getUsersListener);
                         break;
                     case GET_GROUPS:
                         VKRequest groups = new VKRequest("groups.getById",
-                                VKParameters.from("group_ids", Easies.join(b.getIntegerArrayList("group_ids"))));
+                                VKParameters.from("group_ids", Easies.join(b.getIntegerArrayList("group_ids")),
+                                        "v", "5.67"));
                         groups.executeWithListener(getGroupsListener);
+                        break;
+                    case TRY_CONNECTION:
+                        VKRequest connection = new VKRequest("utils.getServerTime", VKParameters.from("v", "5.67"));
+                        connection.executeWithListener(new ListenerWithError() {
+                            @Override
+                            public void onComplete(VKResponse response) {
+                                Message m = dumper.obtainMessage();
+                                m.what = CONNECTION_RESTORED;
+                                mHandler.removeCallbacksAndMessages(null);
+                                dumper.sendMessage(m);
+                            }
+                        });
+                        break;
+                    case CONTINUE_WORK:
+                        failedRequest.attempts = 1;
+                        failedRequest.start();
+                        failedRequest = null;
                         break;
                 }
                 synchronized (VKWorker.this) {
@@ -160,7 +183,6 @@ public class VKWorker extends HandlerThread {
                         e.printStackTrace();
                     }
                 }
-
             }
         };
         Message m = callback.obtainMessage();
@@ -173,8 +195,18 @@ public class VKWorker extends HandlerThread {
 
         @Override
         public void onError(VKError error) {
-            super.onError(error);
-            throw new RuntimeException(error.toString());
+            if (error.errorCode == VKError.VK_REQUEST_HTTP_FAILED) {
+                if (VKWorker.this.failedRequest == null) {
+                    VKWorker.this.failedRequest = new VKRequest(error.request.methodName,
+                            error.request.getMethodParameters());
+                    VKWorker.this.failedRequest.requestListener = this;
+                    Log.d(LOG_TAG, "Failed request occurred");
+                }
+                mHandler.removeCallbacksAndMessages(null);
+                Message m = dumper.obtainMessage();
+                m.what = HTTP_ERROR;
+                dumper.sendMessage(m);
+            } else throw new RuntimeException(error.request.toString() + error.toString());
         }
 
         @Override

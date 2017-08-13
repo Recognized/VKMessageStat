@@ -19,10 +19,8 @@ public class Dumper extends HandlerThread {
     private Handler uiHandler;
     public int expect_count;
     public int expect_last;
-    public int expect_messages;
     private int current_count;
     private int current_last;
-    private int current_messages;
     public boolean gotDialogs;
     public boolean gotUsers;
     public boolean gotGroups;
@@ -75,6 +73,8 @@ public class Dumper extends HandlerThread {
     private Runnable onFinishCount;
     private Runnable onFinishMessages;
     private Runnable onFinishGetDialogs;
+    private Runnable whenConnectionRestored;
+    private Runnable whenConnectionLost;
 
     private ArrayDeque<Integer> queue;
 
@@ -86,7 +86,6 @@ public class Dumper extends HandlerThread {
         super("Dumper");
         current_count = 0;
         current_last = 0;
-        current_messages = 0;
         gotUsers = false;
         gotGroups = false;
         gotDialogs = false;
@@ -105,8 +104,10 @@ public class Dumper extends HandlerThread {
                 Log.d(LOG_TAG, Integer.toString(msg.what));
                 switch (msg.what) {
                     case VKWorker.FINISH_GET_COUNT:
+                        Log.d(LOG_TAG, Integer.toString(current_count));
                         current_count++;
                         if (current_count == expect_count) {
+                            Log.d(LOG_TAG, "FINISHED COUNT");
                             onFinishCount.run();
                         }
                         break;
@@ -158,6 +159,12 @@ public class Dumper extends HandlerThread {
                             uiHandler.post(onFinishGetDialogs);
                         }
                         break;
+                    case VKWorker.CONNECTION_RESTORED:
+                        whenConnectionRestored.run();
+                        break;
+                    case VKWorker.HTTP_ERROR:
+                        whenConnectionLost.run();
+                        break;
                 }
             }
         };
@@ -168,13 +175,17 @@ public class Dumper extends HandlerThread {
         Looper.loop();
     }
 
-    public synchronized void waitUntilReady() {
-        getLooper();
-    }
-
     private void resetDialogsFlags() {
         gotDialogs = false;
         gotGroups = false;
         gotUsers = false;
+    }
+
+    public void setWhenConnectionRestored(Runnable whenConnectionRestored) {
+        this.whenConnectionRestored = whenConnectionRestored;
+    }
+
+    public void setWhenConnectionLost(Runnable whenConnectionLost) {
+        this.whenConnectionLost = whenConnectionLost;
     }
 }

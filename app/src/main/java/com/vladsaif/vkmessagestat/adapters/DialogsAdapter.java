@@ -2,7 +2,7 @@ package com.vladsaif.vkmessagestat.adapters;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.support.v7.widget.LinearLayoutManager;
+import android.graphics.BitmapFactory;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.util.SparseArray;
@@ -29,18 +29,14 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
     private static final String here = "adapter";
     private SparseArray<DialogData> data;
     private ArrayList<DialogData> dialogDataSortedByDate;
-    private ArrayList<Integer> positionToId;
     private SparseIntArray positionByMessages;
     private SparseIntArray positionBySymbols;
     private Context context;
-    private int currentLoadedDialogs;
-    private final int fixedCount = 200;
-    boolean sent = false;
-    private final LinearLayoutManager linearLayoutManager;
 
-    public DialogsAdapter(Context context, LinearLayoutManager ll) {
+    // TODO make constructor from savedInstance state
+
+    public DialogsAdapter(Context context) {
         this.context = context;
-        linearLayoutManager = ll;
         data = Easies.deserializeData(context);
         dialogDataSortedByDate = new ArrayList<>();
         for (int i = 0; i < data.size(); ++i) {
@@ -74,6 +70,7 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
         for (int i = 0; i < sortedBySymbols.size(); ++i) {
             positionBySymbols.put(sortedBySymbols.get(i).dialog_id, i + 1);
         }
+        Log.d("pos", Integer.toString(sortedByMessage.get(2).dialog_id));
     }
 
     @Override
@@ -90,12 +87,27 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
         DialogData thisData = dialogDataSortedByDate.get(position);
         holder.position = position;
         holder.title.setText(thisData.name);
-        holder.scounter.setText(String.format(Locale.ENGLISH, "%d / %d", thisData.out_symbols, thisData.symbols));
-        holder.mcounter.setText(String.format(Locale.ENGLISH, "%d / %d", thisData.out, thisData.messages));
+        holder.other_name.setText(getShortName(thisData.type, thisData.name));
+        switch (positionByMessages.get(thisData.dialog_id)) {
+            case 1:
+                setRing(holder.ring, R.drawable.first);
+                break;
+            case 2:
+                setRing(holder.ring, R.drawable.second);
+                break;
+            case 3:
+                setRing(holder.ring, R.drawable.third);
+                Log.d("tag", "third place set");
+                break;
+            default:
+                holder.ring.setVisibility(View.INVISIBLE);
+        }
+        holder.scounter_out.setText(String.format(Locale.ENGLISH, "%d", thisData.out_symbols));
+        holder.mcounter_out.setText(String.format(Locale.ENGLISH, "%d", thisData.out));
+        holder.scounter_in.setText(String.format(Locale.ENGLISH, "%d", thisData.symbols - thisData.out_symbols));
+        holder.mcounter_in.setText(String.format(Locale.ENGLISH, "%d", thisData.messages - thisData.out));
         holder.acounter.setText(String.format(Locale.ENGLISH, "%d", thisData.audios + thisData.videos
                 + thisData.walls + thisData.pictures));
-        holder.sposition.setText(String.format(Locale.ENGLISH, "%d", positionBySymbols.get(thisData.dialog_id)));
-        holder.mposition.setText(String.format(Locale.ENGLISH, "%d", positionByMessages.get(thisData.dialog_id)));
         holder.dateview.setText(Easies.dateToHumanReadable(thisData.date));
 
         if (SetImage.cached.get(thisData.link) == null) {
@@ -109,6 +121,11 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
         } else {
             holder.avatar.setImageBitmap(SetImage.cached.get(thisData.link));
         }
+    }
+
+    private void setRing(ImageView view, int resource) {
+        view.setVisibility(View.VISIBLE);
+        view.setImageBitmap(BitmapFactory.decodeResource(context.getResources(), resource));
     }
 
     /*public RecyclerView.OnScrollListener scrolling = new RecyclerView.OnScrollListener() {
@@ -129,21 +146,36 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
         }
     };*/
 
+    private String getShortName(Easies.DIALOG_TYPE type, String name) {
+        switch (type) {
+            case CHAT:
+                return context.getString(R.string.other_stat);
+            case COMMUNITY:
+                return name;
+            case USER:
+                return name.split("\\W+")[0];
+            default:
+                return "Null type";
+        }
+    }
+
     @Override
     public int getItemCount() {
-        Log.d(here, Integer.toString(data.size()));
-        return data.size();
+        Log.d(here, Integer.toString(dialogDataSortedByDate.size()));
+        return dialogDataSortedByDate.size();
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         public LinearLayout layout;
         public ImageView avatar;
+        public ImageView ring;
         public TextView title;
-        public TextView mcounter;
-        public TextView scounter;
+        public TextView mcounter_out;
+        public TextView scounter_out;
+        public TextView mcounter_in;
+        public TextView scounter_in;
+        public TextView other_name;
         public TextView acounter;
-        public TextView mposition;
-        public TextView sposition;
         public TextView dateview;
         public int position;
 
@@ -151,12 +183,14 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
             super(v);
             layout = (LinearLayout) v;
             avatar = layout.findViewById(R.id.main_page_avatar);
+            ring = layout.findViewById(R.id.ring);
             title = layout.findViewById(R.id.dialog_title);
-            mcounter = layout.findViewById(R.id.messages_count);
-            scounter = layout.findViewById(R.id.symbols_count);
+            mcounter_out = layout.findViewById(R.id.your_messages);
+            scounter_out = layout.findViewById(R.id.your_symbols);
+            mcounter_in = layout.findViewById(R.id.other_messages);
+            scounter_in = layout.findViewById(R.id.other_symbols);
+            other_name = layout.findViewById(R.id.other_name);
             acounter = layout.findViewById(R.id.attachments_count);
-            mposition = layout.findViewById(R.id.message_position);
-            sposition = layout.findViewById(R.id.symbols_position);
             dateview = layout.findViewById(R.id.date);
         }
     }
