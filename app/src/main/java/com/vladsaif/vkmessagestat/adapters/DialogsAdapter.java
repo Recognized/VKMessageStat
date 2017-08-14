@@ -1,8 +1,11 @@
 package com.vladsaif.vkmessagestat.adapters;
 
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.Bundle;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.util.SparseArray;
@@ -15,9 +18,13 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import com.vladsaif.vkmessagestat.R;
 import com.vladsaif.vkmessagestat.db.DialogData;
+import com.vladsaif.vkmessagestat.ui.DialogDetailActivity;
+import com.vladsaif.vkmessagestat.ui.DialogDetailFragment;
+import com.vladsaif.vkmessagestat.ui.MainPage;
 import com.vladsaif.vkmessagestat.utils.CacheFile;
 import com.vladsaif.vkmessagestat.utils.Easies;
 import com.vladsaif.vkmessagestat.utils.SetImageBase;
+import com.vladsaif.vkmessagestat.utils.Strings;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,37 +32,85 @@ import java.util.Comparator;
 import java.util.Locale;
 
 public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHolder> {
-
-    private static final String here = "adapter";
-    private SparseArray<DialogData> data;
-    private ArrayList<DialogData> dialogDataSortedByDate;
+    private static final String LOG_TAG = DialogsAdapter.class.getSimpleName();
+    public static SparseArray<DialogData> data;
+    private ArrayList<DialogData> dialogData;
     private SparseIntArray positionByMessages;
     private SparseIntArray positionBySymbols;
     private Context context;
+    private boolean calledFromConstructor;
+
+    private RecyclerView mRecyclerView;
+
+    public static final int ORDER_DESC = 1;
+    public static final int ORDER_ASC = 2;
+    public static final int ORDER_TIME_DESC = 3;
+    public static final int ORDER_TIME_ASC = 4;
+
+    /*if (mTwoPane) {
+                        Bundle arguments = new Bundle();
+                        arguments.putString(ItemDetailFragment.ARG_ITEM_ID, holder.mItem.id);
+                        ItemDetailFragment fragment = new ItemDetailFragment();
+                        fragment.setArguments(arguments);
+                        getSupportFragmentManager().beginTransaction()
+                                .replace(R.id.item_detail_container, fragment)
+                                .commit();
+                    } else {
+                        Context context = v.getContext();
+                        Intent intent = new Intent(context, ItemDetailActivity.class);
+                        intent.putExtra(ItemDetailFragment.ARG_ITEM_ID, holder.mItem.id);
+
+                        context.startActivity(intent);
+                    }
+                    */
+
+    private final View.OnClickListener clickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            int itemPosition = mRecyclerView.getChildLayoutPosition(view);
+            if (context instanceof MainPage) {
+                MainPage mainPage = (MainPage) context;
+                if (mainPage.mTwoPane) {
+                    mainPage.detailContainer.removeAllViews();
+                    Bundle arguments = new Bundle();
+                    arguments.putInt(Strings.dialog_id, itemPosition);
+                    DialogDetailFragment fragment = new DialogDetailFragment();
+                    fragment.setArguments(arguments);
+                    mainPage.getSupportFragmentManager().beginTransaction()
+                            .replace(R.id.item_detail_container, fragment)
+                            .commit();
+
+                } else {
+                    Intent toDetailFlow = new Intent(context, DialogDetailActivity.class);
+                    toDetailFlow.putExtra(Strings.dialog_id, dialogData.get(itemPosition).dialog_id);
+                    mainPage.startActivity(toDetailFlow);
+                }
+            }
+        }
+    };
+
 
     // TODO make constructor from savedInstance state
 
-    public DialogsAdapter(Context context) {
+    public DialogsAdapter(Context context, int ORDER_MODE, RecyclerView recyclerView) {
+        mRecyclerView = recyclerView;
         this.context = context;
         data = Easies.deserializeData(context);
-        dialogDataSortedByDate = new ArrayList<>();
+        dialogData = new ArrayList<>();
         for (int i = 0; i < data.size(); ++i) {
-            dialogDataSortedByDate.add(data.valueAt(i));
+            dialogData.add(data.valueAt(i));
         }
-        Collections.sort(dialogDataSortedByDate, new Comparator<DialogData>() {
-            @Override
-            public int compare(DialogData dialogData, DialogData t1) {
-                return t1.date - dialogData.date;
-            }
-        });
-        ArrayList<DialogData> sortedByMessage = new ArrayList<>(dialogDataSortedByDate);
+        calledFromConstructor = true;
+        sortData(ORDER_MODE);
+        calledFromConstructor = false;
+        ArrayList<DialogData> sortedByMessage = new ArrayList<>(dialogData);
         Collections.sort(sortedByMessage, new Comparator<DialogData>() {
             @Override
             public int compare(DialogData dialogData, DialogData t1) {
                 return (int) (t1.messages - dialogData.messages);
             }
         });
-        ArrayList<DialogData> sortedBySymbols = new ArrayList<>(dialogDataSortedByDate);
+        ArrayList<DialogData> sortedBySymbols = new ArrayList<>(dialogData);
         Collections.sort(sortedBySymbols, new Comparator<DialogData>() {
             @Override
             public int compare(DialogData dialogData, DialogData t1) {
@@ -73,18 +128,62 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
         Log.d("pos", Integer.toString(sortedByMessage.get(2).dialog_id));
     }
 
+    public void sortData(int ORDER_MODE) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putInt("adapter_order", ORDER_MODE);
+        editor.apply();
+        Comparator<DialogData> comparator = null;
+        switch (ORDER_MODE) {
+            case DialogsAdapter.ORDER_TIME_DESC:
+                comparator = new Comparator<DialogData>() {
+                    @Override
+                    public int compare(DialogData dialogData, DialogData t1) {
+                        return t1.date - dialogData.date;
+                    }
+                };
+                break;
+            case DialogsAdapter.ORDER_TIME_ASC:
+                comparator = new Comparator<DialogData>() {
+                    @Override
+                    public int compare(DialogData dialogData, DialogData t1) {
+                        return dialogData.date - t1.date;
+                    }
+                };
+                break;
+            case DialogsAdapter.ORDER_ASC:
+                comparator = new Comparator<DialogData>() {
+                    @Override
+                    public int compare(DialogData dialogData, DialogData t1) {
+                        return (int) (dialogData.messages - t1.messages);
+                    }
+                };
+                break;
+            case DialogsAdapter.ORDER_DESC:
+                comparator = new Comparator<DialogData>() {
+                    @Override
+                    public int compare(DialogData dialogData, DialogData t1) {
+                        return (int) (t1.messages - dialogData.messages);
+                    }
+                };
+        }
+        Collections.sort(dialogData, comparator);
+        if (!calledFromConstructor) notifyDataSetChanged();
+    }
+
     @Override
     public DialogsAdapter.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View v = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.dialog, parent, false);
-        Log.d(here, "onCreateViewHolder");
+        v.setOnClickListener(clickListener);
+        Log.d(LOG_TAG, "onCreateViewHolder");
         return new DialogsAdapter.ViewHolder(v);
     }
 
     @Override
     public void onBindViewHolder(DialogsAdapter.ViewHolder holder, int position) {
-        Log.d(here, "onBindViewHolder");
-        DialogData thisData = dialogDataSortedByDate.get(position);
+        Log.d(LOG_TAG, "onBindViewHolder");
+        DialogData thisData = dialogData.get(position);
         holder.position = position;
         holder.title.setText(thisData.name);
         holder.other_name.setText(getShortName(thisData.type, thisData.name));
@@ -128,24 +227,6 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
         view.setImageBitmap(BitmapFactory.decodeResource(context.getResources(), resource));
     }
 
-    /*public RecyclerView.OnScrollListener scrolling = new RecyclerView.OnScrollListener() {
-        @Override
-        public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-            super.onScrolled(recyclerView, dx, dy);
-            int totalItemCount = linearLayoutManager.getItemCount();
-            int lastVisibleItem = linearLayoutManager.findLastVisibleItemPosition();
-            if (!sent && totalItemCount <= (lastVisibleItem + 10)) {
-                sent = true;
-                Message m = context.requestHandler.obtainMessage();
-                m.what = VKWorker.GET_DIALOGS;
-                m.arg1 = fixedCount;
-                m.arg2 = currentLoadedDialogs + 1;
-                context.requestHandler.sendMessage(m);
-                sent = true;
-            }
-        }
-    };*/
-
     private String getShortName(Easies.DIALOG_TYPE type, String name) {
         switch (type) {
             case CHAT:
@@ -161,9 +242,10 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
 
     @Override
     public int getItemCount() {
-        Log.d(here, Integer.toString(dialogDataSortedByDate.size()));
-        return dialogDataSortedByDate.size();
+        Log.d(LOG_TAG, Integer.toString(dialogData.size()));
+        return dialogData.size();
     }
+
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         public LinearLayout layout;

@@ -25,6 +25,7 @@
         </activity>
         <activity
                 android:name=".ui.MainPage"
+                android:configChanges="orientation|screenSize"
                 android:label="@string/title_activity_main_page">
         </activity>
 
@@ -35,6 +36,14 @@
         </service>
 
         <activity android:name=".ui.LoadingActivity">
+        </activity>
+        <activity
+                android:name=".ui.DialogDetailActivity"
+                android:label="@string/title_dialog_detail"
+                android:parentActivityName=".ui.MainPage">
+            <meta-data
+                    android:name="android.support.PARENT_ACTIVITY"
+                    android:value="com.vladsaif.vkmessagestat.ui.MainPage"/>
         </activity>
     </application>
 

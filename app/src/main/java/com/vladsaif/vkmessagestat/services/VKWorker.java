@@ -206,6 +206,16 @@ public class VKWorker extends HandlerThread {
                 Message m = dumper.obtainMessage();
                 m.what = HTTP_ERROR;
                 dumper.sendMessage(m);
+            } else if (error.apiError != null && error.apiError.errorCode == 6) {
+                synchronized (VKWorker.this) {
+                    try {
+                        VKWorker.this.wait(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+                error.request.attempts = 1;
+                error.request.start();
             } else throw new RuntimeException(error.request.toString() + error.toString());
         }
 

@@ -1,14 +1,18 @@
 package com.vladsaif.vkmessagestat.ui;
 
+import android.animation.LayoutTransition;
+import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.PersistableBundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
-import android.view.View;
+import android.view.*;
+import android.widget.FrameLayout;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import com.vk.sdk.VKAccessToken;
 import com.vladsaif.vkmessagestat.R;
 import com.vladsaif.vkmessagestat.adapters.DialogsAdapter;
@@ -20,44 +24,158 @@ public class MainPage extends AppCompatActivity {
     private RecyclerView mRecyclerView;
     private LinearLayoutManager mLayoutManager;
     private ProgressBar mProgress;
+    private int currentAdapterOrder;
+    private DialogsAdapter currentAdapter;
+    private MenuItem order_desc;
+    private MenuItem order_asc;
+    private MenuItem order_time_desc;
+    private MenuItem order_time_asc;
+    public boolean mTwoPane;
+    public FrameLayout detailContainer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_page);
         Toolbar toolbar = (Toolbar) findViewById(R.id.my_toolbar);
-        toolbar.setTitle("Статистика сообщений");
+        toolbar.setTitle("Диалоги");
         setSupportActionBar(toolbar);
+        detailContainer = (FrameLayout) findViewById(R.id.dialog_detail_container);
+        if (detailContainer != null) {
+            mTwoPane = true;
+            ViewGroup pane = detailContainer;
+            LayoutTransition layoutTransition = pane.getLayoutTransition();
+            layoutTransition.enableTransitionType(LayoutTransition.CHANGING);
+            layoutTransition.setStartDelay(LayoutTransition.CHANGE_DISAPPEARING, 0);
+        }
         mProgress = (ProgressBar) findViewById(R.id.loadingRecycler);
         mRecyclerView = (RecyclerView) findViewById(R.id.dialogs);
         token = VKAccessToken.tokenFromSharedPreferences(getApplication(), Strings.access_token);
         mLayoutManager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(mLayoutManager);
-        new AsyncTask<Void, Void, DialogsAdapter>() {
+
+        ViewGroup group = (ViewGroup) findViewById(R.id.frame);
+        LayoutTransition layoutTransition = group.getLayoutTransition();
+        layoutTransition.enableTransitionType(LayoutTransition.CHANGING);
+        layoutTransition.setStartDelay(LayoutTransition.CHANGE_DISAPPEARING, 0);
+
+        SharedPreferences sPref = getSharedPreferences("settings", MODE_PRIVATE);
+        currentAdapterOrder = sPref.getInt("adapter_order", DialogsAdapter.ORDER_TIME_DESC);
+        new AsyncTask<Integer, Void, DialogsAdapter>() {
 
             @Override
-            protected DialogsAdapter doInBackground(Void... objects) {
-                return new DialogsAdapter(getApplicationContext());
+            protected DialogsAdapter doInBackground(Integer... objects) {
+                currentAdapter = new DialogsAdapter(MainPage.this, objects[0], mRecyclerView);
+                return currentAdapter;
             }
-
             @Override
             protected void onPostExecute(DialogsAdapter dialogsAdapter) {
                 mProgress.setVisibility(View.GONE);
                 mRecyclerView.setVisibility(View.VISIBLE);
                 mRecyclerView.setAdapter(dialogsAdapter);
             }
-        }.execute();
+        }.execute(currentAdapterOrder);
+        styleMenuButton();
     }
 
     @Override
-    public void onSaveInstanceState(Bundle outState, PersistableBundle outPersistentState) {
-
-        super.onSaveInstanceState(outState, outPersistentState);
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.menu_main_page, menu);
+        order_asc = menu.findItem(R.id.order_asc);
+        order_desc = menu.findItem(R.id.order_desc);
+        order_time_asc = menu.findItem(R.id.order_time_asc);
+        order_time_desc = menu.findItem(R.id.order_time_desc);
+        switch (currentAdapterOrder) {
+            case DialogsAdapter.ORDER_ASC:
+                order_asc.setEnabled(false);
+                break;
+            case DialogsAdapter.ORDER_DESC:
+                order_desc.setEnabled(false);
+                break;
+            case DialogsAdapter.ORDER_TIME_ASC:
+                order_time_asc.setEnabled(false);
+                break;
+            case DialogsAdapter.ORDER_TIME_DESC:
+                order_time_desc.setEnabled(false);
+        }
+        return true;
     }
 
     @Override
-    protected void onRestoreInstanceState(Bundle savedInstanceState) {
-        super.onRestoreInstanceState(savedInstanceState);
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (currentAdapter == null && item.getItemId() != R.id.settings) return super.onOptionsItemSelected(item);
+        switch (item.getItemId()) {
+            case R.id.settings:
+                // TODO
+                // User chose the "Settings" item, show the app settings UI...
+                return true;
+
+            case R.id.order_asc:
+                currentAdapter.sortData(DialogsAdapter.ORDER_ASC);
+                changeSortState(R.id.order_asc);
+                closeOptionsMenu();
+                return true;
+
+            case R.id.order_desc:
+                currentAdapter.sortData(DialogsAdapter.ORDER_DESC);
+                changeSortState(R.id.order_desc);
+                closeOptionsMenu();
+                return true;
+
+            case R.id.order_time_asc:
+                currentAdapter.sortData(DialogsAdapter.ORDER_TIME_ASC);
+                changeSortState(R.id.order_time_asc);
+                closeOptionsMenu();
+                return true;
+
+            case R.id.order_time_desc:
+                currentAdapter.sortData(DialogsAdapter.ORDER_TIME_DESC);
+                changeSortState(R.id.order_time_desc);
+                closeOptionsMenu();
+                return true;
+
+            case R.id.upwards:
+                mRecyclerView.getLayoutManager().scrollToPosition(0);
+                mRecyclerView.stopScroll();
+                closeOptionsMenu();
+                return true;
+
+            default:
+                // If we got here, the user's action was not recognized.
+                // Invoke the superclass to handle it.
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
+    private void changeSortState(int disabled_item) {
+        order_desc.setEnabled(true);
+        order_asc.setEnabled(true);
+        order_time_asc.setEnabled(true);
+        order_time_desc.setEnabled(true);
+        switch (disabled_item) {
+            case R.id.order_asc:
+                order_asc.setEnabled(false);
+                break;
+            case R.id.order_desc:
+                order_desc.setEnabled(false);
+                break;
+            case R.id.order_time_asc:
+                order_time_asc.setEnabled(false);
+                break;
+            case R.id.order_time_desc:
+                order_time_desc.setEnabled(false);
+        }
+    }
+
+    private void styleMenuButton() {
+        // Find the menu item you want to style
+        View view = findViewById(R.id.upwards);
+
+        // Cast to a TextView instance if the menu item was found
+        if (view != null && view instanceof TextView) {
+            ((TextView) view).setTextColor(Color.WHITE); // Make text colour blue // Increase font size
+        }
     }
 }
 

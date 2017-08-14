@@ -2,8 +2,23 @@
       xmlns:app="http://schemas.android.com/apk/res-auto"
       xmlns:tools="http://schemas.android.com/tools"
       tools:context="com.vladsaif.vkmessagestat.ui.MainPage">
-    <item android:id="@+id/action_settings"
-          android:title="@string/action_settings"
-          android:orderInCategory="100"
+    <!-- "Mark Favorite", should appear as action button if possible -->
+    <item android:id="@+id/sort_by_date"
+          android:title="@string/sort_by_date"
+          app:showAsAction="never">
+        <menu>
+            <item android:id="@+id/order_desc" android:title="@string/order_desc"/>
+            <item android:id="@+id/order_asc" android:title="@string/order_asc"/>
+            <item android:id="@+id/order_time_desc" android:title="@string/order_time_desc"/>
+            <item android:id="@+id/order_time_asc" android:title="@string/order_time_asc"/>
+        </menu>
+    </item>
+    <item android:id="@+id/upwards"
+          android:title="@string/upwards"
+          app:showAsAction="ifRoom|withText"/>
+
+    <item android:id="@+id/settings"
+          android:title="@string/settings"
           app:showAsAction="never"/>
+
 </menu>

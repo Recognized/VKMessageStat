@@ -8,11 +8,20 @@
         <item name="colorAccent">@color/colorAccent</item>
         <item name="windowNoTitle">true</item>
         <item name="windowActionBar">false</item>
+        <item name="actionOverflowButtonStyle">@style/dots_icon</item>
     </style>
+    <style name="dots_icon" parent="Widget.AppCompat.ActionButton.Overflow">
+        <item name="android:src">@drawable/dots_icon</item>
+    </style>
+
+    <style name="AppTheme.ActionBar">
+        <item name="actionMenuTextColor">@color/vk_white</item>
+    </style>
+
     <item name="visible" type="id"/>
     <item name="masked" type="id"/>
     <item name="button" type="integer">5dp</item>
-    <style name="AppTheme.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar"/>
+    <style name="AppTheme.AppBarOverlay" parent="Base.ThemeOverlay.AppCompat.Light"/>
     <style name="AppTheme.PopupOverlay" parent="ThemeOverlay.AppCompat.Light"/>
     <style name="tableTheme">
         <item name="android:paddingLeft">@dimen/table</item>

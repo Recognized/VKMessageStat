@@ -12,8 +12,10 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:background="?attr/colorPrimary"
-            android:elevation="4dp" app:titleTextColor="#ffffff"/>
-    <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
+            android:elevation="4dp"
+            app:titleTextColor="#ffffff"
+            android:theme="@style/AppTheme.ActionBar"/>
+    <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent" android:id="@+id/frame">
         <android.support.v7.widget.RecyclerView
                 android:id="@+id/dialogs"
                 android:layout_width="match_parent"

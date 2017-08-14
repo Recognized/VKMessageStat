@@ -163,6 +163,7 @@ public class MessagesCollectorNew extends Service {
         ArrayDeque<Integer> queue = new ArrayDeque<>();
         for (Integer dialog : dialogs) {
             if (worker.realMessages.get(dialog) - worker.dialogData.get(dialog).messages != 0) {
+                Log.d(LOG_TAG, "dialog added");
                 queue.addFirst(dialog);
             }
         }
@@ -457,7 +458,7 @@ public class MessagesCollectorNew extends Service {
             Log.d(LOG_TAG, "WHEN GOT DIALOGS");
             ArrayList<Integer> user_ids = new ArrayList<>(), group_ids = new ArrayList<>();
             try {
-                Log.d(LOG_TAG, "Dialogs collecting");
+                Log.d(LOG_TAG, "when got dialogs");
                 JSONArray items = response.json.getJSONObject("response").getJSONArray("items");
                 worker.dialogsCount = response.json.getJSONObject("response").getInt("count");
                 for (int i = 0; i < items.length(); ++i) {
@@ -538,17 +539,17 @@ public class MessagesCollectorNew extends Service {
         @Override
         public int doWork(VKResponse response, int peer_id, long currentProgress) {
             try {
-                JSONArray array = response.json.getJSONObject("response").getJSONArray("items");
+                JSONArray array = response.json.getJSONArray("response");
                 for (int i = 0; i < array.length(); ++i) {
-                    JSONObject jj = array.getJSONObject(i).getJSONObject("message");
+                    JSONObject jj = array.getJSONObject(i);
                     int id = -jj.getInt("id");
+                    Log.d(LOG_TAG, "when got groups");
                     String link = jj.has("photo_100") ? jj.getString("photo_100") : Strings.no_photo;
                     DialogData groupData = worker.prevDialogData.get(id, new DialogData(id, Easies.DIALOG_TYPE.COMMUNITY));
                     groupData.link = link;
                     groupData.name = array.getJSONObject(i).getString("name");
                     groupData.date = worker.time.get(id);
                     worker.dialogData.put(id, groupData);
-
                 }
             } catch (JSONException ex) {
                 Log.e(LOG_TAG, ex.toString());

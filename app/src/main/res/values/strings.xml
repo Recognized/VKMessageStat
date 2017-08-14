@@ -32,6 +32,16 @@
     <string name="estimate_download">Оценка времени загрузки</string>
     <string name="your_stat">Вы</string>
     <string name="other_stat">Остальные</string>
+    <string name="upwards">Наверх</string>
+    <string name="sort_by_messages">Сорт. по сообщениям</string>
+    <string name="sort_by_date">Сортировать</string>
+    <string name="settings">Настройки</string>
+    <string name="order_desc">по убыванию сообщений</string>
+    <string name="order_asc">по возрастанию сообщений</string>
+    <string name="order_time_asc">сначала старые</string>
+    <string name="order_time_desc">сначала новые</string>
+    <string name="title_dialog_list">Dialogs</string>
+    <string name="title_dialog_detail">Dialog Detail</string>
 
 
 </resources>
