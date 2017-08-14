@@ -65,7 +65,7 @@ public class LoadingActivity extends AppCompatActivity {
                         estimateProgressBar.setVisibility(View.GONE);
                         prevId = data.id;
                         Log.d(LOG_TAG, "Data isn't null");
-                        fillData(data, message);
+                        fillData(data);
                     }
                 }
                 handler.postDelayed(refreshMessage, periodMessage);
@@ -100,7 +100,7 @@ public class LoadingActivity extends AppCompatActivity {
         }
     };
 
-    private void fillData(MessageData messageData, View v) {
+    private void fillData(MessageData messageData) {
         content.setText(messageData.message);
         name.setText(messageData.data.name);
         date.setText(Easies.dateToHumanReadable(messageData.date));
@@ -121,7 +121,7 @@ public class LoadingActivity extends AppCompatActivity {
         private ImageView view;
         private int counter;
 
-        public SetImage(ImageView view, int counter, Context context) {
+        SetImage(ImageView view, int counter, Context context) {
             super(context);
             this.view = view;
             this.counter = counter;
