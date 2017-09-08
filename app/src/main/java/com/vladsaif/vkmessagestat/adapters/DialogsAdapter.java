@@ -200,6 +200,7 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
         sortData(ORDER_MODE);
         calledFromConstructor = false;
         ArrayList<DialogData> sortedByMessage = new ArrayList<>(dialogData);
+        sortedByMessage.remove(data.get(DialogData.GLOBAL_DATA_ID));
         Collections.sort(sortedByMessage, new Comparator<DialogData>() {
             @Override
             public int compare(DialogData dialogData, DialogData t1) {
@@ -207,6 +208,7 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
             }
         });
         ArrayList<DialogData> sortedBySymbols = new ArrayList<>(dialogData);
+        sortedBySymbols.remove(data.get(DialogData.GLOBAL_DATA_ID));
         Collections.sort(sortedBySymbols, new Comparator<DialogData>() {
             @Override
             public int compare(DialogData dialogData, DialogData t1) {
@@ -217,10 +219,12 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
         for (int i = 0; i < sortedByMessage.size(); ++i) {
             positionByMessages.put(sortedByMessage.get(i).dialog_id, i + 1);
         }
+        positionByMessages.put(DialogData.GLOBAL_DATA_ID, sortedByMessage.size());
         positionBySymbols = new SparseIntArray();
         for (int i = 0; i < sortedBySymbols.size(); ++i) {
             positionBySymbols.put(sortedBySymbols.get(i).dialog_id, i + 1);
         }
+        positionBySymbols.put(DialogData.GLOBAL_DATA_ID, sortedBySymbols.size());
     }
 
     public void reloadData(int ORDER_MODE) {
