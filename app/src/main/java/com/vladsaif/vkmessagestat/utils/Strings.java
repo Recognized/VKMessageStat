@@ -34,6 +34,7 @@ public class Strings {
             rev = "rev",
             commandType = "commandType",
             commandDump = "commandDump",
+            commandRefresh = "commandRefresh",
             counts = "counts",
             counter = "counter",
             advanced = "advanced",

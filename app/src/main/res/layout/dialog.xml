@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              xmlns:app="http://schemas.android.com/apk/res-auto" android:orientation="horizontal"
+              android:orientation="horizontal"
               android:layout_width="match_parent"
               android:layout_height="wrap_content"
               android:paddingTop="5dp"
@@ -13,12 +13,12 @@
             android:layout_height="80dp">
 
         <ImageView
-                app:srcCompat="@drawable/stub" android:id="@+id/main_page_avatar"
+                android:id="@+id/main_page_avatar"
                 android:padding="5dp" android:layout_width="@dimen/avatar_size"
                 android:layout_height="@dimen/avatar_size"/>
         <ImageView
                 android:layout_width="74dp"
-                android:layout_height="74dp" app:srcCompat="@drawable/first" android:id="@+id/ring"
+                android:layout_height="74dp" android:id="@+id/ring"
                 android:paddingLeft="1dp" android:paddingTop="1dp"/>
     </FrameLayout>
     <LinearLayout
@@ -27,6 +27,7 @@
             android:layout_height="wrap_content"
             android:paddingStart="5dp"
             android:paddingEnd="5dp"
+            android:id="@+id/stat_table"
             android:background="@drawable/bottom_line">
         <FrameLayout
                 android:layout_width="match_parent"
@@ -42,7 +43,7 @@
                     android:fontFamily="sans-serif-condensed"
                     android:textSize="18sp"
                     android:ellipsize="end"
-                    android:paddingEnd="70dp"/>
+                    android:paddingRight="70dp"/>
             <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -87,7 +88,7 @@
                         android:layout_width="0dp"
                         android:layout_weight="1"
                         android:layout_height="match_parent"
-                        android:paddingEnd="3dp">
+                        android:paddingRight="3dp">
                     <TextView
                             android:text="@string/your_stat"
                             android:id="@+id/textView3"
@@ -137,8 +138,8 @@
                     <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:id="@+id/textView7"
-                            android:textAppearance="@style/TextAppearance.AppCompat"/>
+                            android:id="@+id/other_attachments"
+                            android:textAppearance="@style/TextAppearance.AppCompat.Body1"/>
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>

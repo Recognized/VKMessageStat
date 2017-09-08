@@ -15,11 +15,11 @@
     master/detail flow.
     
     -->
-    <LinearLayout android:layout_width="match_parent"
-                  android:layout_height="match_parent"
-                  android:orientation="vertical"
-                  android:animateLayoutChanges="true"
-                  tools:context="com.vladsaif.vkmessagestat.ui.LoginActivity">
+    <LinearLayout
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:animateLayoutChanges="true"
+            tools:context="com.vladsaif.vkmessagestat.ui.LoginActivity" android:layout_width="400dp">
         <android.support.v7.widget.Toolbar
                 android:id="@+id/my_toolbar"
                 android:layout_width="match_parent"
@@ -27,7 +27,21 @@
                 android:background="?attr/colorPrimary"
                 android:elevation="4dp" app:titleTextColor="#ffffff"
                 android:theme="@style/AppTheme.ActionBar"/>
-        <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
+        <TextView
+                android:text="@string/refreshing"
+                android:visibility="gone"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:id="@+id/refreshing"
+                android:textAppearance="@style/TextAppearance.AppCompat.Caption" android:textAlignment="center"
+                android:background="@color/colorAccent"
+                android:textColor="@color/vk_white"
+                android:padding="5dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textSize="18sp" android:textAllCaps="true"/>
+        <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent"
+                     android:id="@+id/frame"
+                     android:animateLayoutChanges="true">
             <android.support.v7.widget.RecyclerView
                     android:id="@+id/dialogs"
                     android:layout_width="match_parent"
@@ -50,6 +64,20 @@
             android:id="@+id/dialog_detail_container"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_weight="3"/>
+            android:animateLayoutChanges="true"
+            android:layout_weight="3">
+        <android.support.v7.widget.Toolbar
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/colorPrimary"
+                android:theme="?attr/actionBarTheme"
+                android:minHeight="?attr/actionBarSize" android:id="@+id/fragment_toolbar"/>
+        <TextView
+                android:text="@string/nothing_to_show"
+                android:layout_gravity="center_vertical|center_horizontal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:id="@+id/textView2"
+                android:textAppearance="@style/TextAppearance.AppCompat.Caption" android:textSize="14sp"/>
+    </FrameLayout>
 
 </LinearLayout>

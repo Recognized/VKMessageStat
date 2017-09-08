@@ -42,6 +42,13 @@
     <string name="order_time_desc">сначала новые</string>
     <string name="title_dialog_list">Dialogs</string>
     <string name="title_dialog_detail">Dialog Detail</string>
+    <string name="photos">картинок:</string>
+    <string name="videos">видео:</string>
+    <string name="posts">постов:</string>
+    <string name="audios">аудио:</string>
+    <string name="other_attachments">прочего:</string>
+    <string name="refreshing">Идёт обновление&#8230;</string>
+    <string name="nothing_to_show">Выберите диалог</string>
 
 
 </resources>

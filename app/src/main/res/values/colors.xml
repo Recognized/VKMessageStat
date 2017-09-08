@@ -1,8 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="colorPrimary">#5079b4</color>
+    <color name="selected_menu">#d0e6f9</color>
     <color name="colorPrimaryDark">#426494</color>
     <color name="colorAccent">#ff4081</color>
     <color name="colorPrimaryDarkShadow">#375278</color>
     <color name="bottom_bar_color">#7593be</color>
+    <color name="in_out_first">@color/vk_share_blue_color</color>
+    <color name="in_out_second">@color/vk_light_color</color>
+    <color name="material1">#2ecc71</color>
+    <color name="material2">#f1c40f</color>
+    <color name="material3">#ff8a80</color>
+    <color name="material4">#6abaef</color>
+    <color name="material5">#7df1f5</color>
+    <color name="material6">#e738fe</color>
+    <color name="material7">#feee38</color>
+    <color name="material8">#38fe7a</color>
+    <color name="material9">#b9f6ca</color>
+    <color name="material10">#c688fb</color>
+    <color name="light_blue">#6ca0e9</color>
 </resources>

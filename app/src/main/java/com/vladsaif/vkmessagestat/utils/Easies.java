@@ -1,11 +1,14 @@
 package com.vladsaif.vkmessagestat.utils;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.TypedArray;
 import android.graphics.*;
+import android.support.annotation.Nullable;
 import android.text.TextUtils;
 import android.util.AttributeSet;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.SparseArray;
 import android.view.View;
@@ -18,18 +21,17 @@ import com.vladsaif.vkmessagestat.db.DialogData;
 import java.io.*;
 import java.lang.ref.SoftReference;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Hashtable;
-import java.util.Locale;
+import java.util.*;
 
 public class Easies {
 
 
     public enum DIALOG_TYPE {USER, CHAT, COMMUNITY;}
+
     private static final String LOG_TAG = "Utils.Easies";
 
     public static String[] rus_months = new String[]{"янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"};
+
     // Use only for avatar's of users
     public static Bitmap getCircleBitmap(Bitmap source) {
         if (source == null) {
@@ -147,13 +149,17 @@ public class Easies {
             return day.format(someDate) + " " +
                     rus_months[Integer.decode(new SimpleDateFormat("M", Locale.ENGLISH).format(someDate)) - 1];
         } else return day.format(someDate) + " " +
-                rus_months[Integer.decode(new SimpleDateFormat("M", Locale.ENGLISH).format(someDate))-1]
+                rus_months[Integer.decode(new SimpleDateFormat("M", Locale.ENGLISH).format(someDate)) - 1]
                 + " " + new SimpleDateFormat("yyyy", Locale.ENGLISH).format(someDate);
     }
 
     public static void imageViewAnimatedChange(final ImageView v, final Bitmap new_image, Context context) {
         final Animation anim_out = AnimationUtils.loadAnimation(context, android.R.anim.fade_out);
         final Animation anim_in = AnimationUtils.loadAnimation(context, android.R.anim.fade_in);
+
+        anim_in.setDuration(100);
+        anim_out.setDuration(100);
+
         anim_out.setAnimationListener(new Animation.AnimationListener() {
             @Override
             public void onAnimationStart(Animation animation) {
@@ -237,20 +243,20 @@ public class Easies {
     public static String fileName = "dialogData.out";
 
     public static SparseArray<DialogData> deserializeData(Context context) {
-        File dialogDataFile = new File(Easies.getSerializablePath(context) + fileName);
         ArrayList<DialogData> prevDialogData = null;
-        if (dialogDataFile.exists()) {
+        ObjectInputStream inputStream = getObjectInputStream(context, fileName);
+        if (inputStream == null) {
+            Log.d(LOG_TAG, "Returning new array");
+            return new SparseArray<>();
+        } else {
             try {
-                ObjectInputStream inputStream = new ObjectInputStream(new FileInputStream(dialogDataFile));
                 prevDialogData = (ArrayList<DialogData>) inputStream.readObject();
                 inputStream.close();
-            } catch (IOException ex) {
-                Log.wtf(LOG_TAG, ex);
             } catch (ClassNotFoundException cnfe) {
                 Log.wtf(LOG_TAG, cnfe);
+            } catch (IOException io) {
+                Log.wtf(LOG_TAG, io);
             }
-        } else {
-            return new SparseArray<>();
         }
         SparseArray<DialogData> ans = new SparseArray<>();
         for (DialogData d : prevDialogData) {
@@ -259,20 +265,103 @@ public class Easies {
         return ans;
     }
 
+    public static Pair<Integer, Integer> getScreenDimensions(Activity activity) {
+        DisplayMetrics dMetrics = new DisplayMetrics();
+        activity.getWindowManager().getDefaultDisplay().getMetrics(dMetrics);
+        float density = dMetrics.density;
+        int w = Math.round(dMetrics.widthPixels / density);
+        int h = Math.round(dMetrics.heightPixels / density);
+        return new Pair<>(w, h);
+    }
+
     public static void serializeData(SparseArray<DialogData> data, Context context) {
         ArrayList<DialogData> ser = new ArrayList<>();
         for (int i = 0; i < data.size(); ++i) {
             ser.add(data.valueAt(i));
         }
+        serializeObject(ser, fileName, context);
+    }
+
+    public static String getShortName(Easies.DIALOG_TYPE type, String name) {
+        switch (type) {
+            case CHAT:
+                return "Остальные";
+            case COMMUNITY:
+                return name;
+            case USER:
+                return name.split("\\W+")[0];
+            default:
+                return "Null type";
+        }
+    }
+
+    public static void serializeObject(Serializable obj, String fileName, Context context) {
+        if (obj == null) return;
         try {
-            File dialogDataFile = new File(Easies.getSerializablePath(context) + fileName);
-            if (dialogDataFile.exists()) Log.d(LOG_TAG, "File exists");
-            ObjectOutputStream outputStream = new ObjectOutputStream(new FileOutputStream(dialogDataFile));
-            outputStream.writeObject(ser);
+            File entriesFile = new File(Easies.getSerializablePath(context) + fileName);
+            Log.d(LOG_TAG, "FILENAME: " + entriesFile.getAbsolutePath());
+            if (entriesFile.exists()) {
+                Log.d(LOG_TAG, "File exists");
+                entriesFile.delete();
+            }
+            ObjectOutputStream outputStream = new ObjectOutputStream(new FileOutputStream(entriesFile));
+            outputStream.writeObject(obj);
             outputStream.flush();
             outputStream.close();
         } catch (IOException ex) {
             Log.wtf(LOG_TAG, ex);
+        }
+    }
+
+    @Nullable
+    public static ObjectInputStream getObjectInputStream(Context context, String fileName) {
+        File dialogDataFile = new File(Easies.getSerializablePath(context) + fileName);
+        if (dialogDataFile.exists()) {
+            try {
+                return new ObjectInputStream(new FileInputStream(dialogDataFile));
+            } catch (IOException ex) {
+                Log.wtf(LOG_TAG, ex);
+            }
+        }
+        return null;
+    }
+
+    public static class FastScanner {
+        BufferedReader br;
+        StringTokenizer st;
+
+        public FastScanner(File f) {
+            try {
+                br = new BufferedReader(new FileReader(f));
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+
+        public FastScanner(InputStream is) {
+            br = new BufferedReader(new InputStreamReader(is));
+        }
+
+        public String next() {
+            while (st == null || !st.hasMoreTokens()) {
+                try {
+                    String s = br.readLine();
+                    if (s == null) return null;
+                    st = new StringTokenizer(s);
+                } catch (IOException e) {
+                    // eof
+                    return null;
+                }
+            }
+            return st.nextToken();
+        }
+
+        public int nextInt() {
+            return Integer.parseInt(next());
+        }
+
+        public double nextDouble() {
+            return Double.parseDouble(next());
         }
     }
 }

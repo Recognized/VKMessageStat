@@ -6,17 +6,19 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.BitmapFactory;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.*;
 import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 import android.util.SparseArray;
-import com.vk.sdk.VKAccessToken;
 import com.vk.sdk.api.VKResponse;
 import com.vladsaif.vkmessagestat.R;
 import com.vladsaif.vkmessagestat.db.DialogData;
+import com.vladsaif.vkmessagestat.db.GlobalData;
 import com.vladsaif.vkmessagestat.db.MessageData;
+import com.vladsaif.vkmessagestat.db.Themes;
 import com.vladsaif.vkmessagestat.ui.LoadingActivity;
 import com.vladsaif.vkmessagestat.ui.MainPage;
 import com.vladsaif.vkmessagestat.utils.DataManager;
@@ -29,7 +31,10 @@ import org.json.JSONObject;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 
 import static com.vladsaif.vkmessagestat.utils.Easies.deserializeData;
 import static com.vladsaif.vkmessagestat.utils.Easies.serializeData;
@@ -37,8 +42,6 @@ import static com.vladsaif.vkmessagestat.utils.Easies.serializeData;
 public class MessagesCollectorNew extends Service {
     private static final String LOG_TAG = "MyService";
     private final int NOTIFICATION_ID = 42;
-    private final int packSize = 25 * 199;
-    private String access_token;
     private NotificationManager mNotifyManager;
     private NotificationCompat.Builder mBuilder;
     private int progress;
@@ -65,15 +68,19 @@ public class MessagesCollectorNew extends Service {
         }
     };
     private ConnectivityManager connectivityManager;
+    private ArrayList<Integer> needToKnowUsernames = new ArrayList<>();
+    private ArrayList<Integer> currentDialogMessagesTime;
+    private PowerManager.WakeLock wl;
+    private boolean notifications;
+    private boolean refreshingFinished = false;
+    public static boolean serviceRunning = false;
 
     @Override
     public void onCreate() {
         super.onCreate();
-        access_token = VKAccessToken.currentToken().accessToken;
+        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "My Tag");
         dataManager = new DataManager(getApplicationContext());
-        sendNotification();
-        // Log.d(LOG_TAG, "Pre-debug drop");
-        Log.d(LOG_TAG, "Access token: " + access_token);
     }
 
     @Override
@@ -89,7 +96,11 @@ public class MessagesCollectorNew extends Service {
 
     @Override
     public void onDestroy() {
-        if (worker != null) serializeData(worker.dialogData, this);
+        if (worker != null) {
+            serializeData(worker.dialogData, this);
+            if (worker.globalData != null) worker.globalData.serializeThis(this);
+        }
+        serviceRunning = false;
     }
 
     public final class Progress extends Binder {
@@ -108,10 +119,14 @@ public class MessagesCollectorNew extends Service {
         public boolean isReady() {
             return preparedThreadsReady;
         }
+
+        public boolean isRefreshingFinished() {
+            return refreshingFinished;
+        }
     }
 
     public interface ResponseWork {
-        int doWork(VKResponse response, int peer_id, long currentProgress);
+        int doWork(VKResponse response, int peer_id);
     }
 
     private void sendFinishNotification() {
@@ -124,8 +139,9 @@ public class MessagesCollectorNew extends Service {
         mBuilder = new NotificationCompat.Builder(this);
         mBuilder.setContentTitle(getString(R.string.download_title_completed))
                 .setContentText(getString(R.string.download_text_completed))
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.mipmap.service_icon)
                 .setContentIntent(intent)
+                .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.service_icon))
                 .setOngoing(false);
         mNotifyManager.notify(NOTIFICATION_ID, mBuilder.build());
     }
@@ -133,19 +149,26 @@ public class MessagesCollectorNew extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         String commandType = intent.getStringExtra(Strings.commandType);
+        serviceRunning = true;
         switch (commandType) {
             case Strings.commandDump:
+                wl.acquire();
+                sendNotification();
                 mNotifyManager.notify(NOTIFICATION_ID, mBuilder.setProgress(0, 0, true).build());
-                preparedThreads = new PreparedThreads(dumperInitialization, handlersDereference, getDialogsFromVK, getApplicationContext());
-                progress = 0;
+                notifications = true;
                 break;
-            // TODO
+            case Strings.commandRefresh:
+                notifications = false;
+                // TODO
         }
+        preparedThreads = new PreparedThreads(dumperInitialization, handlersDereference, getDialogsFromVK, getApplicationContext());
+        progress = 0;
         return START_NOT_STICKY;
     }
 
     private void messageToCountOrLast(ArrayList<Integer> src, int flag) {
         int i = 0;
+        VKWorker.PackRequest packRequest = new VKWorker.PackRequest(requestHandler);
         do {
             Log.d(LOG_TAG, "Send list " + Integer.toString(i));
             Message m = requestHandler.obtainMessage();
@@ -154,9 +177,10 @@ public class MessagesCollectorNew extends Service {
             b.putIntegerArrayList("peers",
                     new ArrayList<>(src.subList(i, Math.min(i + 25, src.size()))));
             m.setData(b);
-            requestHandler.sendMessage(m);
+            packRequest.addMessage(m);
             i += 25;
         } while (i < src.size());
+        packRequest.finishAdding();
     }
 
     private void setQueueToUpdate() {
@@ -174,11 +198,18 @@ public class MessagesCollectorNew extends Service {
         @Override
         public void run() {
             serializeData(worker.dialogData, getApplicationContext());
-            sendFinishNotification();
-            SharedPreferences sPref = getSharedPreferences(Strings.settings, MODE_PRIVATE);
-            SharedPreferences.Editor editor = sPref.edit();
-            editor.putBoolean(Strings.stat_mode, true);
-            editor.apply();
+            worker.globalData.serializeThis(getApplicationContext());
+            if (notifications) {
+                sendFinishNotification();
+                SharedPreferences sPref = getSharedPreferences(Strings.settings, MODE_PRIVATE);
+                SharedPreferences.Editor editor = sPref.edit();
+                editor.putBoolean(Strings.stat_mode, true);
+                editor.apply();
+                wl.release();
+            } else {
+                refreshingFinished = true;
+            }
+            serviceRunning = false;
             stopSelf();
         }
     };
@@ -186,8 +217,6 @@ public class MessagesCollectorNew extends Service {
     private Runnable estimateDownload = new Runnable() {
         @Override
         public void run() {
-            dumper.expect_count = dialogs.size() / 25 + (dialogs.size() % 25 == 0 ? 0 : 1);
-            Log.d(LOG_TAG, "Expect getCount requsets: " + Integer.toString(dumper.expect_count));
             Log.d(LOG_TAG, "Dialogs size is " + Integer.toString(dialogs.size()));
             messageToCountOrLast(dialogs, VKWorker.GET_COUNT);
         }
@@ -203,11 +232,9 @@ public class MessagesCollectorNew extends Service {
                     needToCollect.add(dialog);
             }
             if (!needToCollect.isEmpty()) {
-                dumper.expect_last = needToCollect.size() / 25 + (needToCollect.size() % 25 == 0 ? 0 : 1);
                 messageToCountOrLast(needToCollect, VKWorker.GET_LAST);
             } else {
                 Message m = dataHandler.obtainMessage();
-                dumper.expect_last = 1;
                 m.what = VKWorker.FINISH_GET_LAST;
                 dataHandler.sendMessage(m);
             }
@@ -227,32 +254,22 @@ public class MessagesCollectorNew extends Service {
 
     private ResponseWork dumpMessagePack = new ResponseWork() {
         @Override
-        public int doWork(VKResponse response, int peer_id, long currentProgress) {
+        public int doWork(VKResponse response, int peer_id) {
             try {
-                 /*
-                   Template for message data that will store in txt file
-                   [message_id][from_id][out][body][date]
-                 */
                 DialogData thisDialog = worker.dialogData.get(peer_id);
-                DialogData prevData = worker.prevDialogData.get(peer_id, null);
-                long diff = worker.realMessages.get(peer_id) - (prevData == null ? 0 : prevData.messages);
+                DialogData globalData = worker.dialogData.get(DialogData.GLOBAL_DATA_ID, null);
+                if (globalData == null) {
+                    globalData = new DialogData(DialogData.GLOBAL_DATA_ID,
+                            Easies.DIALOG_TYPE.CHAT);
+                    worker.dialogData.put(DialogData.GLOBAL_DATA_ID, globalData);
+                }
                 BufferedWriter writer = dataManager.getWriter(peer_id);
                 JSONObject res = response.json.getJSONObject("response");
                 JSONArray messages = res.getJSONArray("result");
-                int messages_progress = 0;
-                int videos = 0;
-                int photos = 0;
-                int symbols = 0;
-                int walls = 0;
-                int out = 0;
-                int audios = 0;
                 int skipped = 0;
-                int out_symbols = 0;
-                int docs = 0;
-                int stickers = 0;
-                int links = 0;
-                int gifts = 0;
-                TreeMap<Integer, Integer> chatters = new TreeMap<>();
+
+                DialogData update = new DialogData(thisDialog.dialog_id, thisDialog.type);
+
                 boolean isChat = thisDialog.type == Easies.DIALOG_TYPE.CHAT;
                 if (res.getJSONArray("result").getJSONObject(0).has("skipped")) {
                     skipped = res.getJSONArray("result").getJSONObject(0).getInt("skipped");
@@ -264,58 +281,69 @@ public class MessagesCollectorNew extends Service {
                         JSONObject js = msg.getJSONObject(j);
                         int cur_id = js.getInt("id");
                         if (cur_id > id) {
-                            ++messages_progress;
+                            update.messages++;
                             id = cur_id;
                             int from_id = js.getInt("from_id");
+                            if (!worker.globalData.contains(from_id)) {
+                                needToKnowUsernames.add(from_id);
+                                Log.d(LOG_TAG, Integer.toString(from_id));
+                                worker.globalData.putUser(new GlobalData.User(from_id, "Неизвестный", 2));
+                            }
                             if (isChat) {
-                                if (chatters.containsKey(from_id)) {
-                                    int m = chatters.get(from_id);
-                                    chatters.put(from_id, ++m);
+                                if (update.chatters.containsKey(from_id)) {
+                                    int m = update.chatters.get(from_id);
+                                    update.chatters.put(from_id, ++m);
                                 } else {
-                                    chatters.put(from_id, 1);
+                                    update.chatters.put(from_id, 1);
                                 }
                             }
                             int cur_out = js.getInt("out");
                             int date = js.getInt("date");
+                            currentDialogMessagesTime.add(date);
                             String body = js.getString("body");
-                            if (cur_out == 1) {
-                                out++;
-                                out_symbols += body.length();
+                            boolean isOut = cur_out == 1;
+                            if (isOut) {
+                                update.out++;
+                                update.out_symbols += body.length();
                             }
-                            symbols += body.length();
-                            putData(writer, Integer.toString(cur_id));
-                            putData(writer, Integer.toString(from_id));
-                            putData(writer, Integer.toString(cur_out));
-                            putData(writer, body.replace('[', ' ').replace(']', ' '));
-                            putData(writer, Integer.toString(date));
+                            update.symbols += body.length();
+                            Themes.updateScore(update, body);
                             if (js.has("attachments")) {
                                 JSONArray attachments = js.getJSONArray("attachments");
                                 for (int k = 0; k < attachments.length(); ++k) {
                                     JSONObject attachment = attachments.getJSONObject(k);
                                     switch (attachment.getString("type")) {
                                         case "video":
-                                            videos++;
+                                            if (isOut) update.videos++;
+                                            else update.other_videos++;
                                             break;
                                         case "photo":
-                                            photos++;
+                                            if (isOut) update.pictures++;
+                                            else update.other_pictures++;
                                             break;
                                         case "audio":
-                                            audios++;
+                                            if (isOut) update.audios++;
+                                            else update.other_audios++;
                                             break;
                                         case "wall":
-                                            walls++;
+                                            if (isOut) update.walls++;
+                                            else update.other_walls++;
                                             break;
                                         case "gift":
-                                            gifts++;
+                                            if (isOut) update.gifts++;
+                                            else update.other_gifts++;
                                             break;
                                         case "link":
-                                            links++;
+                                            if (isOut) update.link_attachms++;
+                                            else update.other_link_attachms++;
                                             break;
                                         case "doc":
-                                            docs++;
+                                            if (isOut) update.docs++;
+                                            else update.other_docs++;
                                             break;
                                         case "sticker":
-                                            stickers++;
+                                            if (isOut) update.stickers++;
+                                            else update.other_stickers++;
                                             break;
                                         default:
                                             Log.d(LOG_TAG, "Unsupported attachment type: "
@@ -332,26 +360,29 @@ public class MessagesCollectorNew extends Service {
                         }
                     }
                 }
-                progress += messages_progress;
-                Log.d(LOG_TAG, String.format("Update: %d %d %d %d %d %d %d %d",
-                        progress, symbols, videos, photos, audios, walls, out, out_symbols));
-                thisDialog.update(messages_progress, symbols, videos, photos, audios,
-                        walls, out, out_symbols, docs, links, gifts, stickers, chatters);
+                progress += update.messages;
+                Log.d(LOG_TAG, "" + update.themes_score[0]);
+                thisDialog.update(update);
+                globalData.update(update);
                 thisDialog.messages = Math.min(thisDialog.messages, worker.realMessages.get(thisDialog.dialog_id));
                 JSONObject first = response.json.getJSONObject("response")
                         .getJSONArray("result")
                         .getJSONObject(0)
                         .getJSONArray("items")
                         .getJSONObject(0);
+                String message_name = (first.getInt("out") == 1 ? "Вы" :
+                        worker.globalData.getUser(first.getInt("from_id")).name);
                 currentMessageData = new MessageData(peer_id, first.getString("body"), first.getInt("date"),
-                        worker.dialogData.get(peer_id), ++messageId);
+                        worker.dialogData.get(peer_id), ++messageId, message_name);
                 Log.d(LOG_TAG, "Message: " + currentMessageData.message);
                 Log.d(LOG_TAG, "Progress " + Integer.toString(progress));
-                mNotifyManager.notify(NOTIFICATION_ID, mBuilder
+                if (notifications) mNotifyManager.notify(NOTIFICATION_ID, mBuilder
                         .setProgress(worker.allMessages, progress, false)
                         .setContentText(getString(R.string.download_text))
                         .build());
+                thisDialog.lastMessageId = id;
                 if (skipped == 0) {
+                    dataManager.saveEntries(currentDialogMessagesTime, peer_id, getApplicationContext());
                     dataManager.close(peer_id);
                     return -1;
                 } else {
@@ -396,6 +427,8 @@ public class MessagesCollectorNew extends Service {
     private OneArg nextDialog = new OneArg() {
         @Override
         public void call(final int peer_id) {
+            currentDialogMessagesTime = dataManager.getPrevEntries(peer_id, getApplicationContext());
+            Log.d(LOG_TAG, "" + peer_id + ": " + worker.dialogData.get(peer_id).lastMessageId);
             sendMessageGetMessagePack(peer_id, worker.dialogData.get(peer_id).lastMessageId);
         }
     };
@@ -447,14 +480,15 @@ public class MessagesCollectorNew extends Service {
         mBuilder = new NotificationCompat.Builder(this);
         mBuilder.setContentTitle(getString(R.string.download_title))
                 .setContentText(getString(R.string.download_text))
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.mipmap.service_icon)
+                .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.service_icon))
                 .setContentIntent(intent)
                 .setOngoing(true);
     }
 
     private MessagesCollectorNew.ResponseWork whenGotDialogs = new MessagesCollectorNew.ResponseWork() {
         @Override
-        public int doWork(VKResponse response, int peer_id, long currentProgress) {
+        public int doWork(VKResponse response, int peer_id) {
             Log.d(LOG_TAG, "WHEN GOT DIALOGS");
             ArrayList<Integer> user_ids = new ArrayList<>(), group_ids = new ArrayList<>();
             try {
@@ -487,15 +521,14 @@ public class MessagesCollectorNew extends Service {
             } catch (JSONException ex) {
                 Log.e(LOG_TAG, ex.toString());
             }
+            VKWorker.PackRequest packRequest = new VKWorker.PackRequest(requestHandler);
             if (user_ids.size() > 0) {
                 Message m = requestHandler.obtainMessage();
                 m.what = VKWorker.GET_USERS;
                 Bundle b = new Bundle();
                 b.putIntegerArrayList("user_ids", user_ids);
                 m.setData(b);
-                requestHandler.sendMessage(m);
-            } else {
-                dumper.gotUsers = true;
+                packRequest.addMessage(m);
             }
             if (group_ids.size() > 0) {
                 Message m = requestHandler.obtainMessage();
@@ -503,17 +536,16 @@ public class MessagesCollectorNew extends Service {
                 Bundle b = new Bundle();
                 b.putIntegerArrayList("group_ids", group_ids);
                 m.setData(b);
-                requestHandler.sendMessage(m);
-            } else {
-                dumper.gotGroups = true;
+                packRequest.addMessage(m);
             }
+            packRequest.finishAdding();
             return 0;
         }
     };
 
     private MessagesCollectorNew.ResponseWork whenGotUsers = new MessagesCollectorNew.ResponseWork() {
         @Override
-        public int doWork(VKResponse response, int peer_id, long currentProgress) {
+        public int doWork(VKResponse response, int peer_id) {
             try {
                 JSONArray users = response.json.getJSONArray("response");
                 for (int i = 0; i < users.length(); ++i) {
@@ -526,8 +558,10 @@ public class MessagesCollectorNew extends Service {
                     userData.name = username;
                     userData.date = worker.time.get(dialog_id);
                     worker.dialogData.put(dialog_id, userData);
-                }
 
+                    needToKnowUsernames.add(dialog_id);
+                    worker.globalData.putUser(new GlobalData.User(dialog_id, username, 0));
+                }
             } catch (JSONException ex) {
                 Log.e(LOG_TAG, ex.toString());
             }
@@ -537,7 +571,7 @@ public class MessagesCollectorNew extends Service {
 
     private MessagesCollectorNew.ResponseWork whenGotGroups = new MessagesCollectorNew.ResponseWork() {
         @Override
-        public int doWork(VKResponse response, int peer_id, long currentProgress) {
+        public int doWork(VKResponse response, int peer_id) {
             try {
                 JSONArray array = response.json.getJSONArray("response");
                 for (int i = 0; i < array.length(); ++i) {
@@ -563,7 +597,8 @@ public class MessagesCollectorNew extends Service {
         public void run() {
             dumper.setOnFinishCount(getLastMessageIds);
             dumper.setOnFinishLast(collectMessages);
-            dumper.setOnFinishMessages(finishWork);
+            dumper.setOnFinishMessages(getUsernames);
+            dumper.setOnFinishGetUsernames(finishWork);
             dumper.setOnFinishGetDialogs(new Runnable() {
                 @Override
                 public void run() {
@@ -578,11 +613,32 @@ public class MessagesCollectorNew extends Service {
             dumper.setWhenGotDialogs(whenGotDialogs);
             dumper.setWhenGotGroups(whenGotGroups);
             dumper.setWhenGotUsers(whenGotUsers);
+            dumper.setWhenGotUsernames(whenGotUsernames);
             dumper.setWhenConnectionLost(whenConnectionLost);
             dumper.setWhenConnectionRestored(whenConnectionRestored);
             dumper.setNextDialog(nextDialog);
             dumper.setProcess(dumpMessagePack);
             Log.d(LOG_TAG, "All shit is set");
+        }
+    };
+
+    private ResponseWork whenGotUsernames = new ResponseWork() {
+        @Override
+        public int doWork(VKResponse response, int peer_id) {
+            try {
+                JSONArray users = response.json.getJSONArray("response");
+                for (int i = 0; i < users.length(); ++i) {
+                    JSONObject user = users.getJSONObject(i);
+                    int dialog_id = user.getInt(Strings.id);
+                    String username = user.getString("first_name") + " " + user.getString("last_name");
+                    int sex = user.getInt("sex");
+                    worker.globalData.putUser(new GlobalData.User(dialog_id, username, sex));
+                }
+
+            } catch (JSONException ex) {
+                Log.e(LOG_TAG, ex.toString());
+            }
+            return 0;
         }
     };
 
@@ -593,7 +649,7 @@ public class MessagesCollectorNew extends Service {
                 mBuilder.setOngoing(true)
                         .setContentText("Восстановление соединения...")
                         .setProgress(0, 0, true);
-                mNotifyManager.notify(NOTIFICATION_ID, mBuilder.build());
+                if (notifications) mNotifyManager.notify(NOTIFICATION_ID, mBuilder.build());
                 serializeData(worker.dialogData, getApplicationContext());
                 runOnlyOnceWhenConnectionLost = false;
             }
@@ -609,22 +665,38 @@ public class MessagesCollectorNew extends Service {
         }
     };
 
+    private Runnable getUsernames = new Runnable() {
+        @Override
+        public void run() {
+            if (needToKnowUsernames.size() == 0) {
+                Message m = dataHandler.obtainMessage();
+                m.what = VKWorker.FINISH_GET_USERNAMES;
+                dataHandler.sendMessage(m);
+            } else {
+                int i = 0;
+                VKWorker.PackRequest packRequest = new VKWorker.PackRequest(requestHandler);
+                do {
+                    Log.d(LOG_TAG, "Send list " + Integer.toString(i));
+                    Message m = requestHandler.obtainMessage();
+                    m.what = VKWorker.GET_USERNAMES;
+                    Bundle b = new Bundle();
+                    b.putIntegerArrayList("user_ids",
+                            new ArrayList<>(needToKnowUsernames.subList(i, Math.min(i + 700, needToKnowUsernames.size()))));
+                    m.setData(b);
+                    packRequest.addMessage(m);
+                    i += 700;
+                } while (i < needToKnowUsernames.size());
+                packRequest.finishAdding();
+            }
+        }
+    };
+
     private boolean isNetworkAvailable() {
         if (connectivityManager == null) {
             connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         }
         NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
         return activeNetworkInfo != null && activeNetworkInfo.isConnected();
-    }
-
-    private void putData(BufferedWriter writer, String data) {
-        try {
-            writer.write((int) '[');
-            writer.write(data);
-            writer.write((int) ']');
-        } catch (IOException ex) {
-            Log.wtf(LOG_TAG, ex.toString());
-        }
     }
 
     public void sendMessageToWorker(int flag) {

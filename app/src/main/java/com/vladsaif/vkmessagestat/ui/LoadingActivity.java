@@ -101,29 +101,18 @@ public class LoadingActivity extends AppCompatActivity {
     };
 
     private void fillData(MessageData messageData) {
-        content.setText(messageData.message);
+        content.setText(messageData.name + ": " + messageData.message +
+                (messageData.message.equals("") ? "<вложение>" : ""));
         name.setText(messageData.data.name);
         date.setText(Easies.dateToHumanReadable(messageData.date));
-        if (SetImage.cached.get(messageData.data.link) == null) {
-            Bitmap fromMemory = CacheFile.loadPic(messageData.data.link, this);
-            if (fromMemory == null) {
-                CacheFile.setDefaultImage(avatar, messageData.data.type, this);
-                (new SetImage(avatar, ++currentCounter, this)).execute(messageData.data.link);
-            } else {
-                avatar.setImageBitmap(fromMemory);
-            }
-        } else {
-            avatar.setImageBitmap(SetImage.cached.get(messageData.data.link));
-        }
+        CacheFile.setImage(messageData.data, new SetImage(avatar, ++currentCounter, this));
     }
 
     class SetImage extends SetImageBase {
-        private ImageView view;
         private int counter;
 
         SetImage(ImageView view, int counter, Context context) {
-            super(context);
-            this.view = view;
+            super(view, context);
             this.counter = counter;
         }
 

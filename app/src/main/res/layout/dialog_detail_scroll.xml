@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:orientation="vertical"
+            android:isScrollContainer="true" android:id="@+id/scroll">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                  android:orientation="vertical">
+
+        <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
+                android:background="@drawable/bottom_line">
+            <LinearLayout
+                    android:orientation="vertical"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent">
+                <Space android:layout_height="12dp"
+                       android:layout_width="match_parent"/>
+                <TextView
+                        style="@style/tableTheme"
+                        android:layout_height="wrap_content"
+                        android:text="@string/message_count" android:paddingRight="5dp"
+                        android:layout_width="match_parent"/>
+                <TextView
+                        style="@style/tableTheme"
+                        android:text="@string/symbols_count"
+                        android:layout_height="wrap_content"
+                        android:layout_width="match_parent"/>
+                <TextView
+                        style="@style/tableTheme"
+                        android:layout_height="wrap_content"
+                        android:text="@string/photos" android:layout_width="match_parent"/>
+                <TextView
+                        style="@style/tableTheme"
+                        android:layout_height="wrap_content"
+                        android:text="@string/videos" android:layout_width="match_parent"/>
+                <TextView
+                        style="@style/tableTheme"
+                        android:layout_height="wrap_content"
+                        android:text="@string/audios" android:layout_width="match_parent"/>
+                <TextView
+                        style="@style/tableTheme"
+                        android:layout_height="wrap_content"
+                        android:text="@string/posts" android:layout_width="match_parent"/>
+                <TextView
+                        style="@style/tableTheme"
+                        android:layout_height="wrap_content"
+                        android:text="@string/other_attachments" android:layout_width="match_parent"/>
+            </LinearLayout>
+            <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal">
+
+                <LinearLayout
+                        android:orientation="vertical"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="match_parent"
+                        android:paddingRight="3dp">
+                    <TextView
+                            android:text="@string/your_stat"
+                            android:id="@+id/textView3"
+                            android:textSize="10sp"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"/>
+                    <TextView
+                            android:id="@+id/your_messages"
+                            android:textAppearance="@style/Base.TextAppearance.AppCompat.Body1"
+                            android:text="456890"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"/>
+                    <TextView
+                            android:id="@+id/your_symbols"
+                            android:textAppearance="@style/Base.TextAppearance.AppCompat.Body1"
+                            android:text="1234567" android:layout_width="match_parent"
+                            android:layout_height="wrap_content"/>
+                    <TextView
+                            android:id="@+id/your_photos"
+                            android:text="1000"
+                            android:textAppearance="@style/Base.TextAppearance.AppCompat.Body1"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"/>
+                    <TextView
+                            android:id="@+id/your_videos"
+                            android:textAppearance="@style/Base.TextAppearance.AppCompat.Body1"
+                            android:text="7654321"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"/>
+                    <TextView
+                            android:id="@+id/your_audios"
+                            android:textAppearance="@style/Base.TextAppearance.AppCompat.Body1"
+                            android:text="7654321"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"/>
+                    <TextView
+                            android:id="@+id/your_posts"
+                            android:textAppearance="@style/Base.TextAppearance.AppCompat.Body1"
+                            android:text="7654321"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"/>
+                    <TextView
+                            android:id="@+id/your_other"
+                            android:textAppearance="@style/Base.TextAppearance.AppCompat.Body1"
+                            android:text="7654321"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"/>
+                </LinearLayout>
+                <LinearLayout
+                        android:orientation="vertical"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1">
+                    <TextView
+                            android:text="@string/other_stat"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:id="@+id/other_name" android:textSize="10sp" android:layout_width="match_parent"
+                            android:layout_height="wrap_content"/>
+                    <TextView
+                            android:id="@+id/other_messages"
+                            android:textAppearance="@style/Base.TextAppearance.AppCompat.Body1"
+                            android:ellipsize="end"
+                            android:text="548645" android:layout_width="match_parent"
+                            android:layout_height="wrap_content"/>
+                    <TextView
+                            android:id="@+id/other_symbols"
+                            android:textAppearance="@style/Base.TextAppearance.AppCompat.Body1"
+                            android:text="7654321" android:layout_width="match_parent"
+                            android:layout_height="wrap_content"/>
+                    <TextView
+                            android:id="@+id/other_photos"
+                            android:text="1000"
+                            android:textAppearance="@style/Base.TextAppearance.AppCompat.Body1"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"/>
+                    <TextView
+                            android:id="@+id/other_videos"
+                            android:textAppearance="@style/Base.TextAppearance.AppCompat.Body1"
+                            android:text="7654321"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"/>
+                    <TextView
+                            android:id="@+id/other_audios"
+                            android:textAppearance="@style/Base.TextAppearance.AppCompat.Body1"
+                            android:text="7654321"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"/>
+                    <TextView
+                            android:id="@+id/other_posts"
+                            android:textAppearance="@style/Base.TextAppearance.AppCompat.Body1"
+                            android:text="7654321"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"/>
+                    <TextView
+                            android:id="@+id/other_other"
+                            android:textAppearance="@style/Base.TextAppearance.AppCompat.Body1"
+                            android:text="7654321"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"/>
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+        <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bottom_line" android:id="@+id/horizontal_bar_container">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                      android:text="50%"
+                      android:paddingLeft="5dp"
+                      android:paddingBottom="2dp"
+                      android:id="@+id/left_percent" android:layout_gravity="start|center_vertical"
+                      android:textAppearance="@style/TextAppearance.AppCompat.Body1" android:textSize="12sp"/>
+            <com.github.mikephil.charting.charts.HorizontalBarChart android:layout_width="match_parent"
+                                                                    android:layout_height="70dp"
+                                                                    android:id="@+id/in_out_bar">
+
+            </com.github.mikephil.charting.charts.HorizontalBarChart>
+            <TextView android:layout_height="wrap_content"
+                      android:id="@+id/right_percent" android:layout_gravity="end|center_vertical"
+                      android:paddingRight="5dp" android:text="50%"
+                      android:paddingBottom="2dp"
+                      android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+                      android:textSize="12sp" android:layout_width="wrap_content"/>
+        </FrameLayout>
+
+        <FrameLayout
+                android:id="@+id/pie_chart_container"
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bottom_line">
+            <com.github.mikephil.charting.charts.PieChart android:layout_width="match_parent"
+                                                          android:layout_height="wrap_content"
+                                                          android:id="@+id/pie_chart"/>
+        </FrameLayout>
+        <FrameLayout android:layout_width="match_parent" android:layout_height="500dp"
+                     android:background="@drawable/bottom_line" android:id="@+id/accum_chart_container">
+            <com.github.mikephil.charting.charts.LineChart
+                    android:id="@+id/second_chart"
+                    android:layout_width="match_parent"
+                    android:layout_height="500dp"/>
+        </FrameLayout>
+        <FrameLayout
+                android:id="@+id/themes_chart_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bottom_line">
+            <com.github.mikephil.charting.charts.HorizontalBarChart android:layout_width="match_parent"
+                                                                    android:layout_height="1000dp"
+                                                                    android:id="@+id/themes_chart">
+            </com.github.mikephil.charting.charts.HorizontalBarChart>
+            <LinearLayout android:id="@+id/labels" android:layout_width="match_parent"
+                          android:layout_height="match_parent"
+                          android:orientation="horizontal">
+                <TextView xmlns:android="http://schemas.android.com/apk/res/android"
+                          android:layout_weight="1"
+                          android:layout_width="match_parent"
+                          android:layout_height="wrap_content"
+                          android:gravity="end" android:text="sample\n asdfasdf" android:lineSpacingExtra="36sp"
+                          android:paddingTop="50dp"
+                          android:textSize="16sp"
+                          android:paddingRight="10dp" android:id="@+id/positive">
+                </TextView>
+                <TextView xmlns:android="http://schemas.android.com/apk/res/android"
+                          android:layout_weight="1"
+                          android:layout_width="match_parent"
+                          android:layout_height="wrap_content"
+                          android:gravity="start" android:text="sample\n asdfasdf" android:lineSpacingExtra="36sp"
+                          android:paddingLeft="2dp" android:id="@+id/negative" android:textSize="16sp">
+                </TextView>
+            </LinearLayout>
+
+        </FrameLayout>
+    </LinearLayout>
+</ScrollView>

@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory;
 import android.util.Log;
 import android.widget.ImageView;
 import com.vladsaif.vkmessagestat.R;
+import com.vladsaif.vkmessagestat.db.DialogData;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -88,6 +89,20 @@ public class CacheFile {
                         BitmapFactory.decodeResource(context.getApplicationContext().getResources(), R.drawable.camera_100));
             }
             view.setImageBitmap(otherPlaceholder);
+        }
+    }
+
+    public static void setImage(DialogData thisData, SetImageBase setter) {
+        if (SetImageBase.cached.get(thisData.link) == null) {
+            Bitmap fromMemory = CacheFile.loadPic(thisData.link, setter.context);
+            if (fromMemory == null) {
+                CacheFile.setDefaultImage(setter.view, thisData.type, setter.context);
+                setter.execute(thisData.link);
+            } else {
+                setter.view.setImageBitmap(fromMemory);
+            }
+        } else {
+            setter.view.setImageBitmap(SetImageBase.cached.get(thisData.link));
         }
     }
 }

@@ -4,9 +4,15 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.MenuItem;
+import android.widget.ImageView;
+import android.widget.TextView;
 import com.vladsaif.vkmessagestat.R;
 import com.vladsaif.vkmessagestat.adapters.DialogsAdapter;
+import com.vladsaif.vkmessagestat.utils.CacheFile;
+import com.vladsaif.vkmessagestat.utils.SetImageSimple;
 import com.vladsaif.vkmessagestat.utils.Strings;
 
 /**
@@ -16,12 +22,15 @@ import com.vladsaif.vkmessagestat.utils.Strings;
  * in a {@link MainPage}.
  */
 public class DialogDetailActivity extends AppCompatActivity {
+    private static final String LOG_TAG = DialogDetailActivity.class.getSimpleName();
+    private static int dialog_id;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_dialog_detail);
-        // Show the Up button in the action bar.
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
         ActionBar actionBar = getSupportActionBar();
         if (actionBar != null) {
             actionBar.setDisplayHomeAsUpEnabled(true);
@@ -40,10 +49,7 @@ public class DialogDetailActivity extends AppCompatActivity {
             // Create the detail fragment and add it to the activity
             // using a fragment transaction.
             Bundle arguments = new Bundle();
-            int dialog_id = getIntent().getIntExtra(Strings.dialog_id, 0);
-            if (actionBar != null) {
-                actionBar.setTitle(DialogsAdapter.data.get(dialog_id).name);
-            }
+            dialog_id = getIntent().getIntExtra(Strings.dialog_id, 0);
             arguments.putInt(Strings.dialog_id, dialog_id);
             DialogDetailFragment fragment = new DialogDetailFragment();
             fragment.setArguments(arguments);
@@ -51,7 +57,17 @@ public class DialogDetailActivity extends AppCompatActivity {
                     .add(R.id.dialog_detail_container, fragment)
                     .commit();
         }
+        if (actionBar != null) {
+            ImageView avatar = (ImageView) toolbar.findViewById(R.id.avatar);
+            CacheFile.setImage(DialogsAdapter.getData(this).get(dialog_id),
+                    new SetImageSimple(avatar, getApplicationContext()));
+            TextView name = (TextView) toolbar.findViewById(R.id.title);
+            Log.d(LOG_TAG, "" + dialog_id);
+            name.setText(DialogsAdapter.getData(this).get(dialog_id).name);
+            actionBar.setTitle("");
+        }
     }
+
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {

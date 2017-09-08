@@ -17,13 +17,6 @@ public class Dumper extends HandlerThread {
     private final Handler callback;
     public Handler dumper;
     private Handler uiHandler;
-    public int expect_count;
-    public int expect_last;
-    private int current_count;
-    private int current_last;
-    public boolean gotDialogs;
-    public boolean gotUsers;
-    public boolean gotGroups;
 
 
     public void setProcess(MessagesCollectorNew.ResponseWork process) {
@@ -55,6 +48,7 @@ public class Dumper extends HandlerThread {
     private MessagesCollectorNew.ResponseWork whenGotDialogs;
     private MessagesCollectorNew.ResponseWork whenGotUsers;
     private MessagesCollectorNew.ResponseWork whenGotGroups;
+    private MessagesCollectorNew.ResponseWork whenGotUsernames;
     private MessagesCollectorNew.OneArg nextDialog;
 
     public void setOnFinishLast(Runnable onFinishLast) {
@@ -72,6 +66,7 @@ public class Dumper extends HandlerThread {
     private Runnable onFinishLast;
     private Runnable onFinishCount;
     private Runnable onFinishMessages;
+    private Runnable onFinishGetUsernames;
     private Runnable onFinishGetDialogs;
     private Runnable whenConnectionRestored;
     private Runnable whenConnectionLost;
@@ -84,11 +79,6 @@ public class Dumper extends HandlerThread {
 
     public Dumper(Handler callback) {
         super("Dumper");
-        current_count = 0;
-        current_last = 0;
-        gotUsers = false;
-        gotGroups = false;
-        gotDialogs = false;
         uiHandler = new Handler(Looper.getMainLooper());
         this.callback = callback;
     }
@@ -104,21 +94,18 @@ public class Dumper extends HandlerThread {
                 Log.d(LOG_TAG, Integer.toString(msg.what));
                 switch (msg.what) {
                     case VKWorker.FINISH_GET_COUNT:
-                        Log.d(LOG_TAG, Integer.toString(current_count));
-                        current_count++;
-                        if (current_count == expect_count) {
+                        if (VKWorker.PackRequest.requestFinished(msg)) {
                             Log.d(LOG_TAG, "FINISHED COUNT");
                             onFinishCount.run();
                         }
                         break;
                     case VKWorker.FINISH_GET_LAST:
-                        current_last++;
-                        if (current_last == expect_last) {
+                        if (VKWorker.PackRequest.requestFinished(msg)) {
                             onFinishLast.run();
                         }
                         break;
                     case VKWorker.FINISH_GET_MESSAGES:
-                        if (process.doWork((VKResponse) msg.obj, msg.arg1, msg.arg2) < 0) {
+                        if (process.doWork((VKResponse) msg.obj, msg.arg1) < 0) {
                             if (!queue.isEmpty()) {
                                 nextDialog.call(queue.removeFirst());
                             } else {
@@ -136,27 +123,24 @@ public class Dumper extends HandlerThread {
                         }
                         break;
                     case VKWorker.FINISH_GET_DIALOGS:
-                        whenGotDialogs.doWork((VKResponse) msg.obj, 0, 0);
-                        gotDialogs = true;
-                        if (gotUsers && gotGroups) {
-                            resetDialogsFlags();
-                            uiHandler.post(onFinishGetDialogs);
-                        }
+                        whenGotDialogs.doWork((VKResponse) msg.obj, 0);
                         break;
                     case VKWorker.FINISH_GET_USERS:
-                        whenGotUsers.doWork((VKResponse) msg.obj, 0, 0);
-                        gotUsers = true;
-                        if (gotDialogs && gotGroups) {
-                            resetDialogsFlags();
+                        if (msg.obj != null) whenGotUsers.doWork((VKResponse) msg.obj, 0);
+                        if (VKWorker.PackRequest.requestFinished(msg)) {
                             uiHandler.post(onFinishGetDialogs);
                         }
                         break;
                     case VKWorker.FINISH_GET_GROUPS:
-                        whenGotGroups.doWork((VKResponse) msg.obj, 0, 0);
-                        gotGroups = true;
-                        if (gotDialogs && gotUsers) {
-                            resetDialogsFlags();
+                        if (msg.obj != null) whenGotGroups.doWork((VKResponse) msg.obj, 0);
+                        if (VKWorker.PackRequest.requestFinished(msg)) {
                             uiHandler.post(onFinishGetDialogs);
+                        }
+                        break;
+                    case VKWorker.FINISH_GET_USERNAMES:
+                        if (msg.obj != null) whenGotUsernames.doWork((VKResponse) msg.obj, 0);
+                        if (VKWorker.PackRequest.requestFinished(msg)) {
+                            onFinishGetUsernames.run();
                         }
                         break;
                     case VKWorker.CONNECTION_RESTORED:
@@ -165,6 +149,7 @@ public class Dumper extends HandlerThread {
                     case VKWorker.HTTP_ERROR:
                         whenConnectionLost.run();
                         break;
+
                 }
             }
         };
@@ -175,17 +160,19 @@ public class Dumper extends HandlerThread {
         Looper.loop();
     }
 
-    private void resetDialogsFlags() {
-        gotDialogs = false;
-        gotGroups = false;
-        gotUsers = false;
-    }
-
     public void setWhenConnectionRestored(Runnable whenConnectionRestored) {
         this.whenConnectionRestored = whenConnectionRestored;
     }
 
     public void setWhenConnectionLost(Runnable whenConnectionLost) {
         this.whenConnectionLost = whenConnectionLost;
+    }
+
+    public void setOnFinishGetUsernames(Runnable onFinishGetUsernames) {
+        this.onFinishGetUsernames = onFinishGetUsernames;
+    }
+
+    public void setWhenGotUsernames(MessagesCollectorNew.ResponseWork getWhenGotUsernames) {
+        this.whenGotUsernames = getWhenGotUsernames;
     }
 }

@@ -1,7 +1,32 @@
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-             xmlns:tools="http://schemas.android.com/tools"
-             android:id="@+id/dialog_detail_container"
-             android:layout_width="match_parent"
-             android:layout_height="match_parent"
-             tools:context="com.vladsaif.vkmessagestat.ui.DialogDetailActivity"
-             tools:ignore="MergeRootFrame"/>
+<LinearLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/unique_activity_fragment">
+    <android.support.v7.widget.Toolbar
+            xmlns:android="http://schemas.android.com/apk/res/android"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/colorPrimary"
+            android:theme="?attr/actionBarTheme"
+            android:minHeight="?attr/actionBarSize" android:id="@+id/toolbar">
+        <ImageView android:id="@+id/avatar"
+                   android:layout_width="?attr/actionBarSize" android:layout_height="?attr/actionBarSize"
+                   android:paddingTop="7dp" android:paddingBottom="7dp" android:paddingRight="7dp"
+                   android:src="@mipmap/ic_launcher"/>
+        <TextView android:id="@+id/title" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                  android:ellipsize="end" android:text="simple content" android:textColor="#ffffff"
+                  android:textAppearance="@style/TextAppearance.AppCompat.Display1"
+                  android:maxLines="1"
+                  android:fontFamily="sans-serif-condensed" android:textSize="20sp" android:textAllCaps="false"
+        />
+    </android.support.v7.widget.Toolbar>
+    <FrameLayout android:id="@+id/dialog_detail_container"
+                 android:layout_width="match_parent"
+                 tools:context="com.vladsaif.vkmessagestat.ui.DialogDetailActivity"
+                 tools:ignore="MergeRootFrame" android:layout_height="wrap_content">
+    </FrameLayout>
+</LinearLayout>
+

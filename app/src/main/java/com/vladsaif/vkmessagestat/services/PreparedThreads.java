@@ -5,11 +5,9 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 import com.vk.sdk.VKAccessToken;
+import com.vladsaif.vkmessagestat.db.Themes;
 
-/**
- * Created by el-gl on 09.08.2017.
- */
-public class PreparedThreads {
+class PreparedThreads {
     public VKWorker worker;
     public Dumper dumper;
     public static final int DUMPER_STARTED = 50;
@@ -45,6 +43,7 @@ public class PreparedThreads {
             public void run() {
                 dumper = new Dumper(helperHandler);
                 dumper.start();
+                Themes.initialize(context);
             }
         });
     }

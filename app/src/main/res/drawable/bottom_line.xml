@@ -1,7 +1,7 @@
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
 <item><layer-list>
         <item><shape >
-            <solid android:color="@color/vk_light_color" />
+            <solid android:color="@color/vk_share_gray_line"/>
 
         </shape></item>
         <item android:bottom="1dp"><shape >

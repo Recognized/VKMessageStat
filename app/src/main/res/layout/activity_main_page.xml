@@ -15,7 +15,20 @@
             android:elevation="4dp"
             app:titleTextColor="#ffffff"
             android:theme="@style/AppTheme.ActionBar"/>
-    <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent" android:id="@+id/frame">
+    <TextView
+            android:text="@string/refreshing"
+            android:layout_width="match_parent"
+            android:visibility="gone"
+            android:layout_height="wrap_content" android:id="@+id/refreshing"
+            android:textAppearance="@style/TextAppearance.AppCompat.Caption" android:textAlignment="center"
+            android:background="@color/colorAccent"
+            android:textColor="@color/vk_white"
+            android:padding="5dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textSize="18sp" android:textAllCaps="true"/>
+    <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent" android:id="@+id/frame"
+                 android:animateLayoutChanges="true">
         <android.support.v7.widget.RecyclerView
                 android:id="@+id/dialogs"
                 android:layout_width="match_parent"

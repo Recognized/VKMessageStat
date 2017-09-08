@@ -10,14 +10,14 @@ import com.vk.sdk.api.VKParameters;
 import com.vk.sdk.api.VKRequest;
 import com.vk.sdk.api.VKResponse;
 import com.vladsaif.vkmessagestat.db.DialogData;
+import com.vladsaif.vkmessagestat.db.GlobalData;
 import com.vladsaif.vkmessagestat.utils.Easies;
 import com.vladsaif.vkmessagestat.utils.Strings;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.ArrayList;
-import java.util.Date;
+import java.util.*;
 
 public class VKWorker extends HandlerThread {
     private final String LOG_TAG = VKWorker.class.getSimpleName();
@@ -29,16 +29,18 @@ public class VKWorker extends HandlerThread {
     public SparseIntArray realMessages;
     public SparseArray<DialogData> dialogData;
     public SparseArray<DialogData> prevDialogData;
+    public GlobalData globalData;
     public SparseIntArray time;
     public int allMessages;
     public int dialogsCount;
-    private VKRequest failedRequest;
+    private ArrayDeque<VKRequest> failedRequests = new ArrayDeque<>();
     public static final int GET_LAST = 1;
     public static final int GET_COUNT = 2;
     public static final int GET_MESSAGES = 3;
     public static final int GET_DIALOGS = 4;
     public static final int GET_USERS = 5;
     public static final int GET_GROUPS = 6;
+    public static final int GET_USERNAMES = 7;
     public static final int BEGIN_COLLECTING = 101;
     public static final int FINISH_GET_LAST = 1001;
     public static final int FINISH_GET_COUNT = 1002;
@@ -46,10 +48,12 @@ public class VKWorker extends HandlerThread {
     public static final int FINISH_GET_DIALOGS = 1004;
     public static final int FINISH_GET_USERS = 1005;
     public static final int FINISH_GET_GROUPS = 1006;
+    public static final int FINISH_GET_USERNAMES = 1007;
     public static final int HTTP_ERROR = 666;
     public static final int TRY_CONNECTION = 10001;
     public static final int CONNECTION_RESTORED = 10002;
     public static final int CONTINUE_WORK = 10003;
+    private static int id_generator = 0;
 
     public VKWorker(Handler dumper, String access_token, Handler callback, Context context) {
         super("VKWorker");
@@ -60,44 +64,15 @@ public class VKWorker extends HandlerThread {
         dialogData = new SparseArray<>();
         prevDialogData = Easies.deserializeData(context);
         dialogData = this.prevDialogData.clone();
+        globalData = new GlobalData(context);
         allMessages = 0;
         this.callback = callback;
     }
 
-    private ListenerWithError getCountListener = new ListenerWithError() {
-        @Override
-        public void onComplete(VKResponse response) {
-            count(response);
-            notifyWorkFinished(FINISH_GET_COUNT, null);
-        }
-    };
-
-    private ListenerWithError getLastListener = new ListenerWithError() {
-        @Override
-        public void onComplete(VKResponse response) {
-            registerIds(response);
-            notifyWorkFinished(FINISH_GET_LAST, null);
-        }
-    };
-
     private ListenerWithError getDialogsListener = new ListenerWithError() {
         @Override
         public void onComplete(VKResponse response) {
-            notifyWorkFinished(FINISH_GET_DIALOGS, response);
-        }
-    };
-
-    private ListenerWithError getUsersListener = new ListenerWithError() {
-        @Override
-        public void onComplete(VKResponse response) {
-            notifyWorkFinished(FINISH_GET_USERS, response);
-        }
-    };
-
-    private ListenerWithError getGroupsListener = new ListenerWithError() {
-        @Override
-        public void onComplete(VKResponse response) {
-            notifyWorkFinished(FINISH_GET_GROUPS, response);
+            notifyWorkFinished(FINISH_GET_DIALOGS, response, -1);
         }
     };
 
@@ -109,26 +84,42 @@ public class VKWorker extends HandlerThread {
             @Override
             public void handleMessage(Message msg) {
                 final Bundle b = msg.getData();
+                final int id = b.getInt("id", -1);
                 Log.d(LOG_TAG, Long.toString(new Date().getTime()));
                 Log.d(LOG_TAG, Integer.toString(msg.what));
                 switch (msg.what) {
                     case GET_COUNT:
                         VKRequest req = new VKRequest("execute.getCount",
                                 peersToParam(b.getIntegerArrayList("peers")));
-                        req.executeWithListener(getCountListener);
+                        req.requestListener = new ListenerWithError() {
+                            @Override
+                            public void onComplete(VKResponse response) {
+                                count(response);
+                                notifyWorkFinished(FINISH_GET_COUNT, null, id);
+                            }
+                        };
+                        req.start();
                         break;
                     case GET_LAST:
                         VKRequest last = new VKRequest("execute.getLast", peersToParam(b.getIntegerArrayList("peers")));
-                        last.executeWithListener(getLastListener);
+                        last.requestListener = new ListenerWithError() {
+                            @Override
+                            public void onComplete(VKResponse response) {
+                                registerIds(response);
+                                notifyWorkFinished(FINISH_GET_LAST, null, id);
+                            }
+                        };
+                        last.start();
                         break;
                     case GET_MESSAGES:
                         VKRequest messages = new VKRequest("execute.getMessages",
                                 VKParameters.from(Strings.access_token, access_token,
                                         Strings.peer_id, Integer.toString(b.getInt(Strings.peer_id)), Strings.start_message_id,
                                         Integer.toString(b.getInt(Strings.start_message_id))));
-                        messages.executeWithListener(new ListenerWithError() {
+                        messages.requestListener = new ListenerWithError() {
                             @Override
                             public void onComplete(VKResponse response) {
+                                Log.d(LOG_TAG, "my listener");
                                 Message m = dumper.obtainMessage();
                                 m.what = FINISH_GET_MESSAGES;
                                 m.obj = response;
@@ -136,7 +127,8 @@ public class VKWorker extends HandlerThread {
                                 m.arg2 = b.getInt(Strings.progress);
                                 dumper.sendMessage(m);
                             }
-                        });
+                        };
+                        messages.start();
                         break;
                     case GET_DIALOGS:
                         int count = msg.arg1;
@@ -144,23 +136,48 @@ public class VKWorker extends HandlerThread {
                         VKRequest getDialogs = new VKRequest("messages.getDialogs",
                                 VKParameters.from("count", Integer.toString(count), "offset", Integer.toString(offset),
                                         "v", "5.67"));
-                        getDialogs.executeWithListener(getDialogsListener);
+                        getDialogs.requestListener = getDialogsListener;
+                        getDialogs.start();
                         break;
                     case GET_USERS:
                         VKRequest users = new VKRequest("users.get",
                                 VKParameters.from("user_ids", Easies.join(b.getIntegerArrayList("user_ids")),
                                         "fields", "has_photo,photo_100", "v", "5.67"));
-                        users.executeWithListener(getUsersListener);
+                        users.requestListener = new ListenerWithError() {
+                            @Override
+                            public void onComplete(VKResponse response) {
+                                notifyWorkFinished(FINISH_GET_USERS, response, id);
+                            }
+                        };
+                        users.start();
                         break;
                     case GET_GROUPS:
                         VKRequest groups = new VKRequest("groups.getById",
                                 VKParameters.from("group_ids", Easies.join(b.getIntegerArrayList("group_ids")),
                                         "v", "5.67"));
-                        groups.executeWithListener(getGroupsListener);
+                        groups.requestListener = new ListenerWithError() {
+                            @Override
+                            public void onComplete(VKResponse response) {
+                                notifyWorkFinished(FINISH_GET_GROUPS, response, id);
+                            }
+                        };
+                        groups.start();
+                        break;
+                    case GET_USERNAMES:
+                        VKRequest usernames = new VKRequest("users.get",
+                                VKParameters.from("user_ids", Easies.join(b.getIntegerArrayList("user_ids")),
+                                        "fields", "has_photo,photo_100,sex", "v", "5.67"));
+                        usernames.requestListener = new ListenerWithError() {
+                            @Override
+                            public void onComplete(VKResponse response) {
+                                notifyWorkFinished(FINISH_GET_USERNAMES, response, id);
+                            }
+                        };
+                        usernames.start();
                         break;
                     case TRY_CONNECTION:
                         VKRequest connection = new VKRequest("utils.getServerTime", VKParameters.from("v", "5.67"));
-                        connection.executeWithListener(new ListenerWithError() {
+                        connection.requestListener = new ListenerWithError() {
                             @Override
                             public void onComplete(VKResponse response) {
                                 Message m = dumper.obtainMessage();
@@ -168,12 +185,14 @@ public class VKWorker extends HandlerThread {
                                 mHandler.removeCallbacksAndMessages(null);
                                 dumper.sendMessage(m);
                             }
-                        });
+                        };
+                        connection.start();
                         break;
                     case CONTINUE_WORK:
+                        VKRequest failedRequest = failedRequests.removeFirst();
+                        Log.d(LOG_TAG, failedRequest.methodName);
                         failedRequest.attempts = 1;
                         failedRequest.start();
-                        failedRequest = null;
                         break;
                 }
                 synchronized (VKWorker.this) {
@@ -196,13 +215,14 @@ public class VKWorker extends HandlerThread {
         @Override
         public void onError(VKError error) {
             if (error.errorCode == VKError.VK_REQUEST_HTTP_FAILED) {
-                if (VKWorker.this.failedRequest == null) {
-                    VKWorker.this.failedRequest = new VKRequest(error.request.methodName,
-                            error.request.getMethodParameters());
-                    VKWorker.this.failedRequest.requestListener = this;
-                    Log.d(LOG_TAG, "Failed request occurred");
+                if (!error.request.methodName.equals("utils.getServerTime")) {
+                    Log.d(LOG_TAG, error.request.methodName);
+                    if (error.request.requestListener instanceof ListenerWithError)
+                        Log.d(LOG_TAG, "listener with error");
+                    VKRequest failed = new VKRequest(error.request.methodName, error.request.getMethodParameters());
+                    failed.requestListener = error.request.requestListener;
+                    failedRequests.addLast(failed);
                 }
-                mHandler.removeCallbacksAndMessages(null);
                 Message m = dumper.obtainMessage();
                 m.what = HTTP_ERROR;
                 dumper.sendMessage(m);
@@ -223,10 +243,13 @@ public class VKWorker extends HandlerThread {
         public abstract void onComplete(VKResponse response);
     }
 
-    private void notifyWorkFinished(int what, Object obj) {
+    private void notifyWorkFinished(int what, Object obj, int id) {
         Message m = dumper.obtainMessage();
         m.what = what;
         m.obj = obj;
+        Bundle b = new Bundle();
+        b.putInt("id", id);
+        m.setData(b);
         dumper.sendMessage(m);
     }
 
@@ -294,5 +317,55 @@ public class VKWorker extends HandlerThread {
                 "arg24", filteredPeers[23],
                 "arg25", filteredPeers[24]
         );
+    }
+
+    public static class PackRequest {
+        private static final String LOG_TAG = PackRequest.class.getSimpleName();
+        private static SparseArray<PackRequest> allPacks = new SparseArray<>();
+        private Set<Integer> id_set = new TreeSet<>();
+
+
+        private ArrayList<Message> messages = new ArrayList<>();
+        private Handler handler;
+
+        public PackRequest(Handler handler) {
+            this.handler = handler;
+        }
+
+        public static boolean requestFinished(Message m) {
+            int id = m.getData().getInt("id", -1);
+            PackRequest p = allPacks.get(id, null);
+            if (p == null) {
+                return true;
+            } else {
+                p.messageProceeded(id);
+                return p.isAllMessagesProceeded();
+            }
+        }
+
+        private void messageProceeded(int id) {
+            id_set.remove(id);
+        }
+
+        private boolean isAllMessagesProceeded() {
+            return id_set.isEmpty();
+        }
+
+        public void addMessage(Message m) {
+            Bundle b = m.getData();
+            int id = id_generator++;
+            allPacks.put(id, this);
+            this.id_set.add(id);
+            b.putInt("id", id);
+            m.setData(b);
+            messages.add(m);
+        }
+
+        public void finishAdding() {
+            for (Message m : messages) {
+                handler.sendMessage(m);
+            }
+        }
+
     }
 }

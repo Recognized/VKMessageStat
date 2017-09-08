@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.util.SparseArray;
@@ -18,6 +19,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import com.vladsaif.vkmessagestat.R;
 import com.vladsaif.vkmessagestat.db.DialogData;
+import com.vladsaif.vkmessagestat.db.GlobalData;
+import com.vladsaif.vkmessagestat.db.Themes;
 import com.vladsaif.vkmessagestat.ui.DialogDetailActivity;
 import com.vladsaif.vkmessagestat.ui.DialogDetailFragment;
 import com.vladsaif.vkmessagestat.ui.MainPage;
@@ -29,16 +32,17 @@ import com.vladsaif.vkmessagestat.utils.Strings;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Locale;
 
 public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHolder> {
     private static final String LOG_TAG = DialogsAdapter.class.getSimpleName();
-    public static SparseArray<DialogData> data;
+    private static SparseArray<DialogData> data;
+    private static GlobalData globalData;
     private ArrayList<DialogData> dialogData;
     private SparseIntArray positionByMessages;
     private SparseIntArray positionBySymbols;
     private Context context;
     private boolean calledFromConstructor;
+    private int current_selected = -1;
 
     private RecyclerView mRecyclerView;
 
@@ -47,37 +51,31 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
     public static final int ORDER_TIME_DESC = 3;
     public static final int ORDER_TIME_ASC = 4;
 
-    /*if (mTwoPane) {
-                        Bundle arguments = new Bundle();
-                        arguments.putString(ItemDetailFragment.ARG_ITEM_ID, holder.mItem.id);
-                        ItemDetailFragment fragment = new ItemDetailFragment();
-                        fragment.setArguments(arguments);
-                        getSupportFragmentManager().beginTransaction()
-                                .replace(R.id.item_detail_container, fragment)
-                                .commit();
-                    } else {
-                        Context context = v.getContext();
-                        Intent intent = new Intent(context, ItemDetailActivity.class);
-                        intent.putExtra(ItemDetailFragment.ARG_ITEM_ID, holder.mItem.id);
-
-                        context.startActivity(intent);
-                    }
-                    */
-
     private final View.OnClickListener clickListener = new View.OnClickListener() {
         @Override
         public void onClick(View view) {
             int itemPosition = mRecyclerView.getChildLayoutPosition(view);
+            if (current_selected != -1) {
+                View v = mRecyclerView.getLayoutManager().findViewByPosition(current_selected);
+                if (v != null) {
+                    v.setBackgroundColor(ContextCompat.getColor(context, R.color.vk_white));
+                    v.findViewById(R.id.stat_table).setBackgroundResource(R.drawable.bottom_line);
+                }
+            }
+            current_selected = itemPosition;
+            int blue = ContextCompat.getColor(context, R.color.selected_menu);
+            view.setBackgroundColor(blue);
+            view.findViewById(R.id.stat_table).setBackgroundColor(blue);
             if (context instanceof MainPage) {
                 MainPage mainPage = (MainPage) context;
                 if (mainPage.mTwoPane) {
                     mainPage.detailContainer.removeAllViews();
                     Bundle arguments = new Bundle();
-                    arguments.putInt(Strings.dialog_id, itemPosition);
+                    arguments.putInt(Strings.dialog_id, dialogData.get(itemPosition).dialog_id);
                     DialogDetailFragment fragment = new DialogDetailFragment();
                     fragment.setArguments(arguments);
                     mainPage.getSupportFragmentManager().beginTransaction()
-                            .replace(R.id.item_detail_container, fragment)
+                            .replace(R.id.dialog_detail_container, fragment)
                             .commit();
 
                 } else {
@@ -95,37 +93,18 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
     public DialogsAdapter(Context context, int ORDER_MODE, RecyclerView recyclerView) {
         mRecyclerView = recyclerView;
         this.context = context;
-        data = Easies.deserializeData(context);
-        dialogData = new ArrayList<>();
-        for (int i = 0; i < data.size(); ++i) {
-            dialogData.add(data.valueAt(i));
+        if (!Themes.initialized) {
+            Themes.makeOrder(context);
         }
-        calledFromConstructor = true;
-        sortData(ORDER_MODE);
-        calledFromConstructor = false;
-        ArrayList<DialogData> sortedByMessage = new ArrayList<>(dialogData);
-        Collections.sort(sortedByMessage, new Comparator<DialogData>() {
-            @Override
-            public int compare(DialogData dialogData, DialogData t1) {
-                return (int) (t1.messages - dialogData.messages);
-            }
-        });
-        ArrayList<DialogData> sortedBySymbols = new ArrayList<>(dialogData);
-        Collections.sort(sortedBySymbols, new Comparator<DialogData>() {
-            @Override
-            public int compare(DialogData dialogData, DialogData t1) {
-                return (int) (t1.symbols - dialogData.symbols);
-            }
-        });
-        positionByMessages = new SparseIntArray();
-        for (int i = 0; i < sortedByMessage.size(); ++i) {
-            positionByMessages.put(sortedByMessage.get(i).dialog_id, i + 1);
+        if (globalData == null) {
+            globalData = new GlobalData(context);
         }
-        positionBySymbols = new SparseIntArray();
-        for (int i = 0; i < sortedBySymbols.size(); ++i) {
-            positionBySymbols.put(sortedBySymbols.get(i).dialog_id, i + 1);
+        if (data == null) {
+            reloadDialogData(context);
         }
-        Log.d("pos", Integer.toString(sortedByMessage.get(2).dialog_id));
+        if (dialogData == null) {
+            reformData(ORDER_MODE);
+        }
     }
 
     public void sortData(int ORDER_MODE) {
@@ -184,9 +163,11 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
     public void onBindViewHolder(DialogsAdapter.ViewHolder holder, int position) {
         Log.d(LOG_TAG, "onBindViewHolder");
         DialogData thisData = dialogData.get(position);
+        holder.itemView.setBackgroundColor(ContextCompat.getColor(context, R.color.vk_white));
+        holder.itemView.findViewById(R.id.stat_table).setBackgroundResource(R.drawable.bottom_line);
         holder.position = position;
         holder.title.setText(thisData.name);
-        holder.other_name.setText(getShortName(thisData.type, thisData.name));
+        holder.other_name.setText(Easies.getShortName(thisData.type, thisData.name));
         switch (positionByMessages.get(thisData.dialog_id)) {
             case 1:
                 setRing(holder.ring, R.drawable.first);
@@ -196,48 +177,67 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
                 break;
             case 3:
                 setRing(holder.ring, R.drawable.third);
-                Log.d("tag", "third place set");
                 break;
             default:
-                holder.ring.setVisibility(View.INVISIBLE);
+                holder.ring.setVisibility(View.GONE);
         }
-        holder.scounter_out.setText(String.format(Locale.ENGLISH, "%d", thisData.out_symbols));
-        holder.mcounter_out.setText(String.format(Locale.ENGLISH, "%d", thisData.out));
-        holder.scounter_in.setText(String.format(Locale.ENGLISH, "%d", thisData.symbols - thisData.out_symbols));
-        holder.mcounter_in.setText(String.format(Locale.ENGLISH, "%d", thisData.messages - thisData.out));
-        holder.acounter.setText(String.format(Locale.ENGLISH, "%d", thisData.audios + thisData.videos
-                + thisData.walls + thisData.pictures));
+        holder.scounter_out.setText(Long.toString(thisData.out_symbols));
+        holder.mcounter_out.setText(Long.toString(thisData.out));
+        holder.scounter_in.setText(Long.toString(thisData.symbols - thisData.out_symbols));
+        holder.mcounter_in.setText(Long.toString(thisData.messages - thisData.out));
+        holder.acounter_out.setText(Long.toString(thisData.audios + thisData.videos
+                + thisData.walls + thisData.pictures + thisData.link_attachms + thisData.docs + thisData.gifts));
+        holder.acounter_in.setText(Long.toString(thisData.other_audios
+                + thisData.other_videos + thisData.other_walls + thisData.other_pictures
+                + thisData.other_link_attachms + thisData.other_docs + thisData.other_gifts));
         holder.dateview.setText(Easies.dateToHumanReadable(thisData.date));
-
-        if (SetImage.cached.get(thisData.link) == null) {
-            Bitmap fromMemory = CacheFile.loadPic(thisData.link, context);
-            if (fromMemory == null) {
-                CacheFile.setDefaultImage(holder.avatar, thisData.type, context);
-                (new SetImage(holder, position, context)).execute(thisData.link);
-            } else {
-                holder.avatar.setImageBitmap(fromMemory);
-            }
-        } else {
-            holder.avatar.setImageBitmap(SetImage.cached.get(thisData.link));
+        if (thisData.dialog_id != DialogData.GLOBAL_DATA_ID) {
+            CacheFile.setImage(thisData, new SetImage(holder, position, context));
         }
+    }
+
+    public void reformData(int ORDER_MODE) {
+        dialogData = new ArrayList<>();
+        for (int i = 0; i < data.size(); ++i) {
+            dialogData.add(data.valueAt(i));
+        }
+        Log.d(LOG_TAG, "" + data.size());
+        calledFromConstructor = true;
+        sortData(ORDER_MODE);
+        calledFromConstructor = false;
+        ArrayList<DialogData> sortedByMessage = new ArrayList<>(dialogData);
+        Collections.sort(sortedByMessage, new Comparator<DialogData>() {
+            @Override
+            public int compare(DialogData dialogData, DialogData t1) {
+                return (int) (t1.messages - dialogData.messages);
+            }
+        });
+        ArrayList<DialogData> sortedBySymbols = new ArrayList<>(dialogData);
+        Collections.sort(sortedBySymbols, new Comparator<DialogData>() {
+            @Override
+            public int compare(DialogData dialogData, DialogData t1) {
+                return (int) (t1.symbols - dialogData.symbols);
+            }
+        });
+        positionByMessages = new SparseIntArray();
+        for (int i = 0; i < sortedByMessage.size(); ++i) {
+            positionByMessages.put(sortedByMessage.get(i).dialog_id, i + 1);
+        }
+        positionBySymbols = new SparseIntArray();
+        for (int i = 0; i < sortedBySymbols.size(); ++i) {
+            positionBySymbols.put(sortedBySymbols.get(i).dialog_id, i + 1);
+        }
+    }
+
+    public void reloadData(int ORDER_MODE) {
+        globalData = new GlobalData(context);
+        reloadDialogData(context);
+        reformData(ORDER_MODE);
     }
 
     private void setRing(ImageView view, int resource) {
         view.setVisibility(View.VISIBLE);
         view.setImageBitmap(BitmapFactory.decodeResource(context.getResources(), resource));
-    }
-
-    private String getShortName(Easies.DIALOG_TYPE type, String name) {
-        switch (type) {
-            case CHAT:
-                return context.getString(R.string.other_stat);
-            case COMMUNITY:
-                return name;
-            case USER:
-                return name.split("\\W+")[0];
-            default:
-                return "Null type";
-        }
     }
 
     @Override
@@ -257,7 +257,8 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
         public TextView mcounter_in;
         public TextView scounter_in;
         public TextView other_name;
-        public TextView acounter;
+        public TextView acounter_in;
+        public TextView acounter_out;
         public TextView dateview;
         public int position;
 
@@ -272,7 +273,8 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
             mcounter_in = layout.findViewById(R.id.other_messages);
             scounter_in = layout.findViewById(R.id.other_symbols);
             other_name = layout.findViewById(R.id.other_name);
-            acounter = layout.findViewById(R.id.attachments_count);
+            acounter_out = layout.findViewById(R.id.attachments_count);
+            acounter_in = layout.findViewById(R.id.other_attachments);
             dateview = layout.findViewById(R.id.date);
         }
     }
@@ -281,8 +283,8 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
         private ViewHolder holder;
         private int mPosition;
 
-        public SetImage(ViewHolder holder, int currentHolderPosition, Context context) {
-            super(context);
+        SetImage(ViewHolder holder, int currentHolderPosition, Context context) {
+            super(holder.avatar, context);
             this.holder = holder;
             this.mPosition = currentHolderPosition;
         }
@@ -294,5 +296,36 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
             }
         }
     }
+
+    public static GlobalData getGlobalData(Context context) {
+        if (globalData != null) return globalData;
+        else {
+            globalData = new GlobalData(context);
+            return globalData;
+        }
+    }
+
+    private static void reloadDialogData(Context context) {
+        data = Easies.deserializeData(context.getApplicationContext());
+        for (int i = 0; i < data.size(); ++i) {
+            if (data.valueAt(i).themesEnabled && data.valueAt(i).dialog_id != DialogData.GLOBAL_DATA_ID) {
+                data.valueAt(i).normalizeScore();
+            }
+        }
+        for (int i = 0; i < data.size(); ++i) {
+            if (data.valueAt(i).themesEnabled && data.valueAt(i).dialog_id != DialogData.GLOBAL_DATA_ID) {
+                data.valueAt(i).buildRelativeScore();
+            }
+        }
+    }
+
+    public static SparseArray<DialogData> getData(Context context) {
+        if (data != null) return data;
+        else {
+            reloadDialogData(context);
+            return data;
+        }
+    }
+
 
 }

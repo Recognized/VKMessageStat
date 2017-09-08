@@ -17,23 +17,13 @@
             android:theme="?attr/actionBarTheme"
             android:title="@string/download_text"
             android:minHeight="?attr/actionBarSize" android:id="@+id/toolbar"/>
-    <android.support.design.widget.TabLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-
-        <android.support.design.widget.TabItem android:layout_width="wrap_content" android:layout_height="wrap_content"
-                                               android:text="Center"/>
-        <android.support.design.widget.TabItem android:layout_width="wrap_content" android:layout_height="wrap_content"
-                                               android:text="Right"/>
-    </android.support.design.widget.TabLayout>
     <LinearLayout
             android:orientation="vertical"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:background="@color/vk_white"
             android:id="@+id/not_toolbar"
-            android:animateLayoutChanges="true"
-            android:gravity="bottom">
+            android:animateLayoutChanges="true">
         <LinearLayout
                 android:orientation="vertical"
                 android:layout_width="match_parent"
@@ -58,13 +48,6 @@
                     android:textAppearance="@style/TextAppearance.AppCompat.Caption" android:textSize="18sp"
                     android:textAlignment="center"/>
         </LinearLayout>
-        <LinearLayout
-                android:orientation="horizontal"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:id="@+id/message_container">
-
-        </LinearLayout>
         <ProgressBar
                 style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="match_parent"
@@ -72,5 +55,12 @@
                 android:progress="0"
                 android:max="100"
                 android:id="@+id/progressBar"/>
+        <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/message_container">
+
+        </LinearLayout>
     </LinearLayout>
 </LinearLayout>

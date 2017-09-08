@@ -52,21 +52,21 @@ public class LoginActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
         VKAccessToken token = VKAccessToken.tokenFromSharedPreferences(getApplication(), Strings.access_token);
-        if (token != null) {
-            SharedPreferences sPref = getSharedPreferences(Strings.settings, MODE_PRIVATE);
-            if (!sPref.contains(Strings.external_storage)) {
-                SharedPreferences.Editor edit = sPref.edit();
-                try {
-                    File test = new File(getExternalFilesDir(null), "test");
-                    OutputStream os = new FileOutputStream(test);
-                    Log.d(LOG_TAG, "using external storage");
-                    edit.putBoolean(Strings.external_storage, true);
-                } catch (IOException ex) {
-                    Log.d(LOG_TAG, "using internal storage");
-                    edit.putBoolean(Strings.external_storage, false);
-                }
-                edit.apply();
+        SharedPreferences sPref = getSharedPreferences(Strings.settings, MODE_PRIVATE);
+        if (!sPref.contains(Strings.external_storage)) {
+            SharedPreferences.Editor edit = sPref.edit();
+            try {
+                File test = new File(getExternalFilesDir(null), "test");
+                OutputStream os = new FileOutputStream(test);
+                Log.d(LOG_TAG, "using external storage");
+                edit.putBoolean(Strings.external_storage, true);
+            } catch (IOException ex) {
+                Log.d(LOG_TAG, "using internal storage");
+                edit.putBoolean(Strings.external_storage, false);
             }
+            edit.apply();
+        }
+        if (token != null) {
             nextActivity(sPref);
         }
     }

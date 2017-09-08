@@ -3,18 +3,21 @@ package com.vladsaif.vkmessagestat.utils;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
+import android.widget.ImageView;
 
 import java.util.ArrayDeque;
 import java.util.HashMap;
 
 public abstract class SetImageBase extends AsyncTask<String, Void, Bitmap> {
     protected Context context;
+    protected ImageView view;
     public static HashMap<String, Bitmap> cached = new HashMap<>();
     public static ArrayDeque<String> carousel = new ArrayDeque<>();
-    public static int cacheSize = 5;
+    public static int cacheSize = 10;
 
-    protected SetImageBase(Context context) {
+    protected SetImageBase(ImageView view, Context context) {
         this.context = context;
+        this.view = view;
     }
 
     @Override
