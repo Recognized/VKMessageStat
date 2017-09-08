@@ -163,52 +163,6 @@ public class DialogDetailFragment extends Fragment {
             }
         }.execute();
 
-        final FrameLayout themes_container = rootView.findViewById(R.id.themes_chart_container);
-        if (currentDialog.themesEnabled) {
-            layoutInflater.inflate(R.layout.progress, themes_container, true);
-            final HorizontalBarChart themes_chart = rootView.findViewById(R.id.themes_chart);
-            themes_chart.setVisibility(View.INVISIBLE);
-            new AsyncTask<Void, Void, Void>() {
-                @Override
-                protected Void doInBackground(Void... voids) {
-                    ChartConfigurator.makeThemesChart(themes_chart, currentDialog, context);
-                    return null;
-                }
-
-                @Override
-                protected void onPostExecute(Void aVoid) {
-                    themes_container.findViewById(R.id.progress).setVisibility(View.GONE);
-                    themes_chart.setVisibility(View.VISIBLE);
-                    String[] labels = themes_chart.getData().getDataSetByIndex(0).getStackLabels();
-                    int positive = currentDialog.getPositiveRelative();
-                    int negative = currentDialog.getNegativeRelative();
-                    TextView pos = themes_container.findViewById(R.id.positive);
-                    TextView neg = themes_container.findViewById(R.id.negative);
-                    String[] posLabels = new String[positive];
-                    String[] negLabels = new String[negative];
-                    System.arraycopy(labels, 0, posLabels, 0, positive);
-                    System.arraycopy(labels, positive, negLabels, 0, negative);
-                    StringBuilder textPos = new StringBuilder();
-                    if (positive > 0) textPos = new StringBuilder(posLabels[0]);
-                    for (int i = 1; i < positive; ++i) {
-                        textPos.append('\n').append(posLabels[i]);
-                    }
-                    pos.setText(textPos);
-                    StringBuilder textNeg = new StringBuilder();
-                    for (int i = 0; i < positive; ++i) {
-                        textNeg.append('\n');
-                    }
-                    if (negative > 0) textNeg.append(negLabels[0]);
-                    for (int i = 1; i < negative; ++i) {
-                        textNeg.append('\n').append(negLabels[i]);
-                    }
-                    neg.setText(textNeg);
-                }
-            }.execute();
-        } else {
-            themes_container.setVisibility(View.GONE);
-        }
-
 
         return rootView;
     }

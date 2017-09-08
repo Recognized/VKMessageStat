@@ -6,7 +6,10 @@ import android.graphics.Paint;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.util.Pair;
 import android.util.Log;
-import com.github.mikephil.charting.charts.*;
+import com.github.mikephil.charting.charts.BarChart;
+import com.github.mikephil.charting.charts.BarLineChartBase;
+import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.charts.PieChart;
 import com.github.mikephil.charting.components.Description;
 import com.github.mikephil.charting.components.LimitLine;
 import com.github.mikephil.charting.components.XAxis;
@@ -18,7 +21,6 @@ import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
 import com.vladsaif.vkmessagestat.R;
 import com.vladsaif.vkmessagestat.db.DialogData;
 import com.vladsaif.vkmessagestat.db.GlobalData;
-import com.vladsaif.vkmessagestat.db.Themes;
 import com.vladsaif.vkmessagestat.utils.DateFormatter;
 import com.vladsaif.vkmessagestat.utils.Easies;
 
@@ -157,52 +159,6 @@ public class ChartConfigurator {
         chart.setDrawEntryLabels(true);
         chart.getLegend().setEnabled(false);
         chart.setEntryLabelColor(Color.BLACK);
-    }
-
-    public static void makeThemesChart(HorizontalBarChart chart, DialogData dialogData, Context context) {
-
-        ArrayList<Pair<Float, Integer>> score = new ArrayList<>();
-        for (int i = 0; i < dialogData.relative_score.length; ++i) {
-            score.add(new Pair<Float, Integer>(dialogData.relative_score[i], i));
-        }
-        Collections.sort(score, new Comparator<Pair<Float, Integer>>() {
-            @Override
-            public int compare(Pair<Float, Integer> aFloat, Pair<Float, Integer> t1) {
-                return (t1.first > aFloat.first ? -1 : (Math.abs(t1.first - aFloat.first) < 1e-08 ? 0 : 1));
-            }
-        });
-        ArrayList<BarEntry> entries = new ArrayList<>();
-        int[] colors = new int[score.size()];
-        String[] stackLabels = new String[score.size()];
-        for (int i = 0; i < score.size(); ++i) {
-            entries.add(new BarEntry(i * 0.6f, score.get(i).first, Themes.getThemeName(score.get(i).second)));
-            stackLabels[i] = Themes.getThemeName(score.get(i).second);
-            colors[i] = (score.get(i).first >= 0 ? ContextCompat.getColor(context, R.color.material1) :
-                    ContextCompat.getColor(context, R.color.material3));
-        }
-        BarDataSet barDataSet = new BarDataSet(entries, "Обсуждение тем");
-        barDataSet.setStackLabels(stackLabels);
-        barDataSet.setDrawValues(true);
-        barDataSet.setColors(colors);
-        barDataSet.setValueTextSize(13);
-
-        BarData barData = new BarData(barDataSet);
-        barData.setBarWidth(0.5f);
-        barData.setDrawValues(true);
-        barData.setValueFormatter(new PercentFormatter());
-        chart.setData(barData);
-        chart.setFitBars(true);
-        chart.getRenderer().getPaintValues().setStyle(Paint.Style.STROKE);
-        chart.getXAxis().setEnabled(false);
-        chart.setExtraRightOffset(25);
-        chart.getAxisLeft().setEnabled(false);
-        chart.getAxisRight().setEnabled(false);
-        chart.getLegend().setEnabled(false);
-        chart.getDescription().setEnabled(false);
-        chart.setDrawValueAboveBar(true);
-        chart.setTouchEnabled(false);
-        chart.invalidate();
-        chart.setBorderWidth(0);
     }
 
     public static class MyListener implements OnChartValueSelectedListener {

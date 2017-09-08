@@ -20,7 +20,6 @@ import android.widget.TextView;
 import com.vladsaif.vkmessagestat.R;
 import com.vladsaif.vkmessagestat.db.DialogData;
 import com.vladsaif.vkmessagestat.db.GlobalData;
-import com.vladsaif.vkmessagestat.db.Themes;
 import com.vladsaif.vkmessagestat.ui.DialogDetailActivity;
 import com.vladsaif.vkmessagestat.ui.DialogDetailFragment;
 import com.vladsaif.vkmessagestat.ui.MainPage;
@@ -93,9 +92,6 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
     public DialogsAdapter(Context context, int ORDER_MODE, RecyclerView recyclerView) {
         mRecyclerView = recyclerView;
         this.context = context;
-        if (!Themes.initialized) {
-            Themes.makeOrder(context);
-        }
         if (globalData == null) {
             globalData = new GlobalData(context);
         }
@@ -191,9 +187,7 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
                 + thisData.other_videos + thisData.other_walls + thisData.other_pictures
                 + thisData.other_link_attachms + thisData.other_docs + thisData.other_gifts));
         holder.dateview.setText(Easies.dateToHumanReadable(thisData.date));
-        if (thisData.dialog_id != DialogData.GLOBAL_DATA_ID) {
             CacheFile.setImage(thisData, new SetImage(holder, position, context));
-        }
     }
 
     public void reformData(int ORDER_MODE) {
@@ -307,16 +301,6 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
 
     private static void reloadDialogData(Context context) {
         data = Easies.deserializeData(context.getApplicationContext());
-        for (int i = 0; i < data.size(); ++i) {
-            if (data.valueAt(i).themesEnabled && data.valueAt(i).dialog_id != DialogData.GLOBAL_DATA_ID) {
-                data.valueAt(i).normalizeScore();
-            }
-        }
-        for (int i = 0; i < data.size(); ++i) {
-            if (data.valueAt(i).themesEnabled && data.valueAt(i).dialog_id != DialogData.GLOBAL_DATA_ID) {
-                data.valueAt(i).buildRelativeScore();
-            }
-        }
     }
 
     public static SparseArray<DialogData> getData(Context context) {
@@ -326,6 +310,4 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
             return data;
         }
     }
-
-
 }

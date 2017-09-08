@@ -18,7 +18,6 @@ import com.vladsaif.vkmessagestat.R;
 import com.vladsaif.vkmessagestat.db.DialogData;
 import com.vladsaif.vkmessagestat.db.GlobalData;
 import com.vladsaif.vkmessagestat.db.MessageData;
-import com.vladsaif.vkmessagestat.db.Themes;
 import com.vladsaif.vkmessagestat.ui.LoadingActivity;
 import com.vladsaif.vkmessagestat.ui.MainPage;
 import com.vladsaif.vkmessagestat.utils.DataManager;
@@ -307,7 +306,6 @@ public class MessagesCollectorNew extends Service {
                                 update.out_symbols += body.length();
                             }
                             update.symbols += body.length();
-                            Themes.updateScore(update, body);
                             if (js.has("attachments")) {
                                 JSONArray attachments = js.getJSONArray("attachments");
                                 for (int k = 0; k < attachments.length(); ++k) {
@@ -361,7 +359,6 @@ public class MessagesCollectorNew extends Service {
                     }
                 }
                 progress += update.messages;
-                Log.d(LOG_TAG, "" + update.themes_score[0]);
                 thisDialog.update(update);
                 globalData.update(update);
                 thisDialog.messages = Math.min(thisDialog.messages, worker.realMessages.get(thisDialog.dialog_id));

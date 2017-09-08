@@ -26,20 +26,20 @@ public class CacheFile {
     }
 
     public static Bitmap loadBitmap(String link, Context context) {
-            Bitmap bitmap;
-            if (!link.equals("no_photo")) {
-                try {
-                    InputStream inputStream = new URL(link).openStream();   // Download Image from URL
-                    bitmap = Easies.getCircleBitmap(BitmapFactory.decodeStream(inputStream));       // Decode Bitmap
-                    inputStream.close();
-                    savePic(bitmap, Easies.transformLink(link), context.getApplicationContext());
-                } catch (Exception e) {
-                    throw new RuntimeException(e.toString());
-                }
-            } else {
-                bitmap = null;
+        Bitmap bitmap;
+        if (!link.equals("no_photo")) {
+            try {
+                InputStream inputStream = new URL(link).openStream();   // Download Image from URL
+                bitmap = Easies.getCircleBitmap(BitmapFactory.decodeStream(inputStream));       // Decode Bitmap
+                inputStream.close();
+                savePic(bitmap, Easies.transformLink(link), context.getApplicationContext());
+            } catch (Exception e) {
+                throw new RuntimeException(e.toString());
             }
-            return bitmap;
+        } else {
+            bitmap = null;
+        }
+        return bitmap;
     }
 
     public static Bitmap loadPic(String link, Context context) {
@@ -93,6 +93,10 @@ public class CacheFile {
     }
 
     public static void setImage(DialogData thisData, SetImageBase setter) {
+        if (thisData.link == null) {
+            setDefaultImage(setter.view, thisData.type, setter.context);
+            return;
+        }
         if (SetImageBase.cached.get(thisData.link) == null) {
             Bitmap fromMemory = CacheFile.loadPic(thisData.link, setter.context);
             if (fromMemory == null) {

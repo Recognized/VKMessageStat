@@ -207,36 +207,5 @@
                     android:layout_width="match_parent"
                     android:layout_height="500dp"/>
         </FrameLayout>
-        <FrameLayout
-                android:id="@+id/themes_chart_container"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bottom_line">
-            <com.github.mikephil.charting.charts.HorizontalBarChart android:layout_width="match_parent"
-                                                                    android:layout_height="1000dp"
-                                                                    android:id="@+id/themes_chart">
-            </com.github.mikephil.charting.charts.HorizontalBarChart>
-            <LinearLayout android:id="@+id/labels" android:layout_width="match_parent"
-                          android:layout_height="match_parent"
-                          android:orientation="horizontal">
-                <TextView xmlns:android="http://schemas.android.com/apk/res/android"
-                          android:layout_weight="1"
-                          android:layout_width="match_parent"
-                          android:layout_height="wrap_content"
-                          android:gravity="end" android:text="sample\n asdfasdf" android:lineSpacingExtra="36sp"
-                          android:paddingTop="50dp"
-                          android:textSize="16sp"
-                          android:paddingRight="10dp" android:id="@+id/positive">
-                </TextView>
-                <TextView xmlns:android="http://schemas.android.com/apk/res/android"
-                          android:layout_weight="1"
-                          android:layout_width="match_parent"
-                          android:layout_height="wrap_content"
-                          android:gravity="start" android:text="sample\n asdfasdf" android:lineSpacingExtra="36sp"
-                          android:paddingLeft="2dp" android:id="@+id/negative" android:textSize="16sp">
-                </TextView>
-            </LinearLayout>
-
-        </FrameLayout>
     </LinearLayout>
 </ScrollView>
