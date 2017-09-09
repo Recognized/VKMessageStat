@@ -315,6 +315,7 @@ public class MessagesCollectorNew extends Service {
                                 update.out++;
                                 update.out_symbols += body.length();
                             }
+                            
                             update.symbols += body.length();
                             if (js.has("attachments")) {
                                 JSONArray attachments = js.getJSONArray("attachments");
