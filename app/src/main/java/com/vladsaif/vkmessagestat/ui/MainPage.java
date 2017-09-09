@@ -176,13 +176,8 @@ public class MainPage extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (currentAdapter == null && item.getItemId() != R.id.settings) return super.onOptionsItemSelected(item);
+        if (currentAdapter == null) return super.onOptionsItemSelected(item);
         switch (item.getItemId()) {
-            case R.id.settings:
-                // TODO
-                // User chose the "Settings" item, show the app settings UI...
-                return true;
-
             case R.id.order_asc:
                 currentAdapter.sortData(DialogsAdapter.ORDER_ASC);
                 changeSortState(R.id.order_asc);

@@ -162,7 +162,7 @@ public class DialogsAdapter extends RecyclerView.Adapter<DialogsAdapter.ViewHold
         holder.itemView.setBackgroundColor(ContextCompat.getColor(context, R.color.vk_white));
         holder.itemView.findViewById(R.id.stat_table).setBackgroundResource(R.drawable.bottom_line);
         holder.position = position;
-        holder.title.setText(thisData.name);
+        holder.title.setText(thisData.dialog_id == DialogData.GLOBAL_DATA_ID ? "Все диалоги" : thisData.name);
         holder.other_name.setText(Easies.getShortName(thisData.type, thisData.name));
         switch (positionByMessages.get(thisData.dialog_id)) {
             case 1:

@@ -276,7 +276,7 @@ public class VKWorker extends HandlerThread {
                 allMessages += count - dialogData.get(peer).messages;
             }
         } catch (JSONException ex) {
-            throw new RuntimeException("Not expected. " + ex.toString());
+            throw new RuntimeException("Not expected. " + ex.toString() + '\n' + response.toString());
         }
     }
 

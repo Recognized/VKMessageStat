@@ -6,6 +6,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -80,6 +81,7 @@ public class MessagesCollectorNew extends Service {
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
         wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "My Tag");
         dataManager = new DataManager(getApplicationContext());
+        bitmap_icon = BitmapFactory.decodeResource(getResources(), R.mipmap.service_icon);
     }
 
     @Override
@@ -251,6 +253,7 @@ public class MessagesCollectorNew extends Service {
         }
     };
 
+    private Bitmap bitmap_icon;
     private ResponseWork dumpMessagePack = new ResponseWork() {
         @Override
         public int doWork(VKResponse response, int peer_id) {
@@ -260,6 +263,7 @@ public class MessagesCollectorNew extends Service {
                 if (globalData == null) {
                     globalData = new DialogData(DialogData.GLOBAL_DATA_ID,
                             Easies.DIALOG_TYPE.CHAT);
+                    globalData.name = "Все диалоги";
                     worker.dialogData.put(DialogData.GLOBAL_DATA_ID, globalData);
                 }
                 BufferedWriter writer = dataManager.getWriter(peer_id);
@@ -295,6 +299,12 @@ public class MessagesCollectorNew extends Service {
                                 } else {
                                     update.chatters.put(from_id, 1);
                                 }
+                            }
+                            if (globalData.chatters.containsKey(from_id)) {
+                                int m = update.chatters.get(from_id);
+                                globalData.chatters.put(from_id, ++m);
+                            } else {
+                                globalData.chatters.put(from_id, 1);
                             }
                             int cur_out = js.getInt("out");
                             int date = js.getInt("date");
@@ -376,6 +386,8 @@ public class MessagesCollectorNew extends Service {
                 if (notifications) mNotifyManager.notify(NOTIFICATION_ID, mBuilder
                         .setProgress(worker.allMessages, progress, false)
                         .setContentText(getString(R.string.download_text))
+                        .setSmallIcon(R.mipmap.service_icon)
+                        .setLargeIcon(bitmap_icon)
                         .build());
                 thisDialog.lastMessageId = id;
                 if (skipped == 0) {

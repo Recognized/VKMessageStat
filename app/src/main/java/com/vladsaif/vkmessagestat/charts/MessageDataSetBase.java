@@ -9,10 +9,12 @@ import com.github.mikephil.charting.formatter.IValueFormatter;
 import com.github.mikephil.charting.utils.ViewPortHandler;
 import com.vladsaif.vkmessagestat.R;
 import com.vladsaif.vkmessagestat.adapters.DialogsAdapter;
+import com.vladsaif.vkmessagestat.db.DialogData;
 import com.vladsaif.vkmessagestat.utils.Easies;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public abstract class MessageDataSetBase extends LineDataSet {
@@ -23,10 +25,12 @@ public abstract class MessageDataSetBase extends LineDataSet {
     public MessageDataSetBase(String label, int dialog_id, Context context) {
         super(null, label);
         this.context = context;
-        Log.d(LOG_TAG, "Getting raw values");
-        int[] rawEntries = deserializeRawEntries(dialog_id, context);
+        int[] rawEntries = dialog_id == DialogData.GLOBAL_DATA_ID ? deserializeGlobalEntries(context) :
+                deserializeRawEntries(dialog_id, context);
         if (rawEntries == null) {
+            Log.d(LOG_TAG, "Getting raw values");
             rawEntries = readRawEntries(dialog_id, context);
+            Arrays.sort(rawEntries);
             serializeRawEntries(rawEntries, dialog_id, context);
         }
         proceed(rawEntries);
@@ -63,14 +67,41 @@ public abstract class MessageDataSetBase extends LineDataSet {
             } catch (ClassNotFoundException cnfe) {
                 Log.wtf(LOG_TAG, cnfe);
             }
-        } else {
-            return null;
         }
         return null;
     }
 
+    public static int[] deserializeGlobalEntries(Context context) {
+        File dataPath = new File(Easies.getSerializablePath(context));
+        int[] array = new int[(int) DialogsAdapter.getData(context).get(DialogData.GLOBAL_DATA_ID).messages];
+        int pos = 0;
+        File[] files = dataPath.listFiles();
+        outer:
+        for (File file : files) {
+            if (file.getName().startsWith("entries")) {
+                try {
+                    ObjectInputStream inputStream = new ObjectInputStream(new FileInputStream(file));
+                    int[] prevEntries = (int[]) inputStream.readObject();
+                    inputStream.close();
+                    for (int prevEntry : prevEntries) {
+                        if (pos > array.length - 1) break outer;
+                        array[pos++] = prevEntry;
+                    }
+                } catch (IOException ex) {
+                    Log.wtf(LOG_TAG, ex);
+                } catch (ClassNotFoundException cnfe) {
+                    Log.wtf(LOG_TAG, cnfe);
+                }
+            }
+        }
+        Arrays.sort(array);
+        Log.d(LOG_TAG, Arrays.deepToString(files));
+        return array;
+    }
+
     public static void serializeRawEntries(int[] rawEntries, int dialog_id, Context context) {
         String fileName = idToFilename(dialog_id);
+        if (dialog_id == DialogData.GLOBAL_DATA_ID) Arrays.sort(rawEntries);
         Easies.serializeObject(rawEntries, fileName, context);
     }
 
