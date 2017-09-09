@@ -1,5 +1,6 @@
 This simple application collects and shows you information about your dialogs and messages at vk.com
 
+Download it <a href="https://github.com/Recognized/VKMessageStat/releases">here</a>
 
 <p align="center">
   <img src="https://github.com/Recognized/VKMessageStat/blob/master/screenshots/1.png" width="350"/>
